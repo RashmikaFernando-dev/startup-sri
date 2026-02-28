@@ -3,21 +3,21 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import {
   Box,
-  Container,
   Typography,
   TextField,
   Button,
   Link,
-  InputAdornment,
   Paper,
   Alert,
   Divider,
+  IconButton,
+  InputAdornment,
+  Snackbar,
 } from '@mui/material'
-import EmailIcon from '@mui/icons-material/Email'
-import LockIcon from '@mui/icons-material/Lock'
+import VisibilityIcon from '@mui/icons-material/Visibility'
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
-import Layout from '@/components/layout/Layout'
 
 const validationSchema = Yup.object({
   email: Yup.string()
@@ -31,7 +31,9 @@ const validationSchema = Yup.object({
 export default function Login() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const formik = useFormik({
     initialValues: {
@@ -44,14 +46,25 @@ export default function Login() {
       setError(null)
       
       try {
-        // TODO: API call to login user
-        console.log('Login values:', values)
-        
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        
-        // Redirect to dashboard
-        router.push('/dashboard')
+        const res = await fetch('http://localhost:5000/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: values.email, password: values.password }),
+        })
+
+        const data = await res.json()
+
+        if (!res.ok) {
+          throw new Error(data.message || 'Login failed')
+        }
+
+        // Save token to localStorage
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('user', JSON.stringify(data.user))
+
+        setSuccess(true)
+        // Redirect to dashboard after 1.5 seconds
+        setTimeout(() => router.push('/user/dashboard'), 1500)
       } catch (err: any) {
         setError(err.message || 'Login failed. Please check your credentials.')
       } finally {
@@ -61,112 +74,174 @@ export default function Login() {
   })
 
   return (
-    <Layout>
+    <>
       <Head>
-        <title>Login - StartupSri</title>
-        <meta name="description" content="Login to your StartupSri account" />
+        <title>Sign In – StartupSri</title>
+        <meta name="description" content="Sign in to your StartupSri account" />
       </Head>
 
+      {/* Page wrapper */}
       <Box
         sx={{
-          minHeight: 'calc(100vh - 200px)',
+          minHeight: '100vh',
+          bgcolor: '#f0f2f5',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          py: 8,
-          px: 2,
+          flexDirection: 'column',
         }}
       >
-        <Container maxWidth="sm">
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
+        {/* Minimal top bar */}
+        <Box
+          sx={{
+            px: { xs: 3, md: 6 },
+            py: 2.5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
+            onClick={() => router.push('/')}
+          >
+            <Box
+              component="img"
+              src="/StartupSri.svg"
+              alt="StartupSri Logo"
+              sx={{ width: 36, height: 36, objectFit: 'contain' }}
+            />
             <Typography
-              variant="h3"
-              component="h1"
-              sx={{
-                fontWeight: 800,
-                mb: 1,
-                fontSize: { xs: '2rem', sm: '2.5rem' },
-              }}
+              variant="h6"
+              sx={{ fontWeight: 800, color: '#0a1940', letterSpacing: '-0.02em' }}
             >
-              Welcome back
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Sign in to your account to continue
+              StartupSri
             </Typography>
           </Box>
+          <Link
+            component="button"
+            variant="body2"
+            onClick={() => router.push('/register')}
+            sx={{ fontWeight: 600, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+          >
+            Don't have an account? <Box component="span" sx={{ color: 'primary.main' }}>Sign Up</Box>
+          </Link>
+        </Box>
 
+        {/* Centered card area */}
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            px: 2,
+            py: 4,
+          }}
+        >
           <Paper
             elevation={0}
             sx={{
-              p: 4,
+              width: '100%',
+              maxWidth: 420,
+              p: { xs: 3.5, sm: 5 },
+              borderRadius: 3,
               border: '1px solid',
-              borderColor: 'divider',
-              borderRadius: 2,
+              borderColor: 'grey.200',
+              bgcolor: '#ffffff',
+              boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
             }}
           >
+            {/* Header */}
+            <Box sx={{ textAlign: 'center', mb: 4 }}>
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{ fontWeight: 800, mb: 0.75, letterSpacing: '-0.02em', color: '#0a1940' }}
+              >
+                Sign In
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Welcome back to StartupSri
+              </Typography>
+            </Box>
+
             {error && (
-              <Alert severity="error" sx={{ mb: 3 }}>
+              <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
                 {error}
               </Alert>
             )}
 
             <form onSubmit={formik.handleSubmit}>
+              {/* Email */}
+              <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 0.75, display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.7rem' }}>
+                Email
+              </Typography>
               <TextField
                 fullWidth
                 id="email"
                 name="email"
-                label="Email Address"
+                placeholder="john@example.com"
                 type="email"
                 value={formik.values.email}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 error={formik.touched.email && Boolean(formik.errors.email)}
                 helperText={formik.touched.email && formik.errors.email}
-                sx={{ mb: 3 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <EmailIcon color="action" />
-                    </InputAdornment>
-                  ),
+                sx={{
+                  mb: 2.5,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    bgcolor: '#fafafa',
+                    '&:hover fieldset': { borderColor: 'primary.main' },
+                    '&.Mui-focused fieldset': { borderWidth: 1.5 },
+                  },
                 }}
               />
 
+              {/* Password */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.7rem' }}>
+                  Password
+                </Typography>
+                <Link
+                  component="button"
+                  type="button"
+                  variant="caption"
+                  onClick={() => router.push('/forgot-password')}
+                  sx={{ fontWeight: 600, color: 'primary.main', textDecoration: 'none', fontSize: '0.75rem', '&:hover': { textDecoration: 'underline' } }}
+                >
+                  Forgot password?
+                </Link>
+              </Box>
               <TextField
                 fullWidth
                 id="password"
                 name="password"
-                label="Password"
-                type="password"
+                placeholder="••••••••"
+                type={showPassword ? 'text' : 'password'}
                 value={formik.values.password}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 error={formik.touched.password && Boolean(formik.errors.password)}
                 helperText={formik.touched.password && formik.errors.password}
-                sx={{ mb: 2 }}
+                sx={{
+                  mb: 3.5,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    bgcolor: '#fafafa',
+                    '&:hover fieldset': { borderColor: 'primary.main' },
+                    '&.Mui-focused fieldset': { borderWidth: 1.5 },
+                  },
+                }}
                 InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockIcon color="action" />
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setShowPassword(!showPassword)} edge="end">
+                        {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                      </IconButton>
                     </InputAdornment>
                   ),
                 }}
               />
-
-              <Box sx={{ textAlign: 'right', mb: 3 }}>
-                <Link
-                  href="/forgot-password"
-                  color="primary"
-                  variant="body2"
-                  sx={{ fontWeight: 600, cursor: 'pointer' }}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    router.push('/forgot-password')
-                  }}
-                >
-                  Forgot password?
-                </Link>
-              </Box>
 
               <Button
                 type="submit"
@@ -180,37 +255,54 @@ export default function Login() {
                   textTransform: 'none',
                   fontSize: '1rem',
                   borderRadius: 2,
+                  bgcolor: '#0a1940',
+                  boxShadow: 'none',
+                  '&:hover': { bgcolor: '#1565c0', boxShadow: '0 4px 16px rgba(21,101,192,0.35)' },
+                  transition: 'all 0.2s',
                 }}
               >
-                {loading ? 'Signing In...' : 'Sign In'}
+                {loading ? 'Signing in…' : 'Sign In'}
               </Button>
             </form>
 
-            <Divider sx={{ my: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                OR
-              </Typography>
+            <Divider sx={{ my: 3, '& .MuiDivider-wrapper': { px: 2 } }}>
+              <Typography variant="caption" color="text.disabled" sx={{ fontWeight: 500 }}>OR</Typography>
             </Divider>
 
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2" color="text.secondary">
-                Don't have an account?{' '}
+                Do not have an account?{' '}
                 <Link
-                  href="/register"
-                  color="primary"
-                  sx={{ fontWeight: 600, cursor: 'pointer' }}
-                  onClick={(e) => {
-                    e.preventDefault()
-                    router.push('/register')
-                  }}
+                  component="button"
+                  variant="body2"
+                  onClick={() => router.push('/register')}
+                  sx={{ fontWeight: 700, color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                 >
-                  Sign up
+                  Sign Up
                 </Link>
               </Typography>
             </Box>
           </Paper>
-        </Container>
+        </Box>
+
+        {/* Minimal footer */}
+        <Box sx={{ py: 3, textAlign: 'center' }}>
+          <Typography variant="caption" color="text.disabled">
+            © 2026 StartupSri. All rights reserved.
+          </Typography>
+        </Box>
       </Box>
-    </Layout>
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={success}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        autoHideDuration={3000}
+      >
+        <Alert severity="success" variant="filled" sx={{ width: '100%', fontSize: '1rem' }}>
+          Login successful! Redirecting...
+        </Alert>
+      </Snackbar>
+    </>
   )
 }

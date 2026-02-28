@@ -7,6 +7,14 @@ import { logout } from '@/redux/slices/authSlice'
 export default function Navbar() {
   const router = useRouter()
   const dispatch = useDispatch()
+
+  const scrollTo = (id: string) => {
+    if (router.pathname === '/') {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      router.push(`/#${id}`)
+    }
+  }
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth)
@@ -74,7 +82,7 @@ export default function Navbar() {
                     bgcolor: 'transparent',
                   }
                 }}
-                onClick={() => router.push('/about')}
+                onClick={() => scrollTo('features')}
               >
                 About
               </Button>
@@ -89,7 +97,7 @@ export default function Navbar() {
                     bgcolor: 'transparent',
                   }
                 }}
-                onClick={() => router.push('/projects')}
+                onClick={() => scrollTo('opportunities')}
               >
                 Projects
               </Button>
@@ -104,7 +112,7 @@ export default function Navbar() {
                     bgcolor: 'transparent',
                   }
                 }}
-                onClick={() => router.push('/how-it-works')}
+                onClick={() => scrollTo('how-it-works')}
               >
                 How it Works
               </Button>
