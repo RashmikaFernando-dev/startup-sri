@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
+import { useAppDispatch, useAppSelector } from '@/hooks/useTypedSelector'
+import { loginStart, loginFailure, logout } from '@/redux/slices/authSlice'
 import {
   Box,
   Typography,
@@ -54,9 +56,9 @@ const validationSchema = Yup.object({
 
 export default function Register() {
   const router = useRouter()
-  const [error, setError] = useState<string | null>(null)
+  const dispatch = useAppDispatch()
+  const { loading, error } = useAppSelector((s) => s.auth)
   const [success, setSuccess] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
@@ -73,9 +75,8 @@ export default function Register() {
     },
     validationSchema,
     onSubmit: async (values) => {
-      setLoading(true)
-      setError(null)
-      
+      dispatch(loginStart())
+
       try {
         const res = await fetch('http://localhost:5000/api/auth/register', {
           method: 'POST',
@@ -96,17 +97,11 @@ export default function Register() {
           throw new Error(data.message || 'Registration failed')
         }
 
-        // Save token to localStorage
-        localStorage.setItem('token', data.token)
-        localStorage.setItem('user', JSON.stringify(data.user))
-
         setSuccess(true)
-        // Redirect to login after 2 seconds
-        setTimeout(() => router.push('/login'), 2000)
+        dispatch(logout())
+        router.push('/login')
       } catch (err: any) {
-        setError(err.message || 'Registration failed. Please try again.')
-      } finally {
-        setLoading(false)
+        dispatch(loginFailure(err.message || 'Registration failed. Please try again.'))
       }
     },
   })

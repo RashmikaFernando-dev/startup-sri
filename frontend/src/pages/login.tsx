@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
+import { useAppDispatch, useAppSelector } from '@/hooks/useTypedSelector'
+import { loginStart, loginSuccess, loginFailure } from '@/redux/slices/authSlice'
 import {
   Box,
   Typography,
@@ -30,9 +32,9 @@ const validationSchema = Yup.object({
 
 export default function Login() {
   const router = useRouter()
-  const [error, setError] = useState<string | null>(null)
+  const dispatch = useAppDispatch()
+  const { loading, error } = useAppSelector((s) => s.auth)
   const [success, setSuccess] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
   const formik = useFormik({
@@ -42,9 +44,8 @@ export default function Login() {
     },
     validationSchema,
     onSubmit: async (values) => {
-      setLoading(true)
-      setError(null)
-      
+      dispatch(loginStart())
+
       try {
         const res = await fetch('http://localhost:5000/api/auth/login', {
           method: 'POST',
@@ -58,17 +59,16 @@ export default function Login() {
           throw new Error(data.message || 'Login failed')
         }
 
-        // Save token to localStorage
+        // Persist to localStorage and update Redux store
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
+        dispatch(loginSuccess({ user: data.user, token: data.token }))
 
         setSuccess(true)
         // Redirect to dashboard after 1.5 seconds
         setTimeout(() => router.push('/user/dashboard'), 1500)
       } catch (err: any) {
-        setError(err.message || 'Login failed. Please check your credentials.')
-      } finally {
-        setLoading(false)
+        dispatch(loginFailure(err.message || 'Login failed. Please check your credentials.'))
       }
     },
   })

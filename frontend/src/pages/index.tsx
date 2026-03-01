@@ -249,17 +249,15 @@ export default function Home() {
               mb: 3, lineHeight: 1.1, letterSpacing: '-0.02em', maxWidth: 800,
             }}
           >
-            Connecting Visionary<br />
-            <Box component="span" sx={{ color: '#ffb74d' }}>Startups</Box>{' '}
-            with Strategic<br />Investors
+            Where Sri Lanka's Tech Dreams<br />
+            Meet{' '}<Box component="span" sx={{ color: '#ffb74d' }}>Smart Capital</Box>
           </Typography>
           <Typography
             variant="h6"
             sx={{ maxWidth: 640, mb: 5, opacity: 0.88, fontWeight: 400, fontSize: { xs: '1rem', md: '1.15rem' }, lineHeight: 1.7 }}
           >
-            StartupSri provides tech entrepreneurs a transparent, verified path to raise
-            microloans and equity funding — while giving investors a trusted gateway to back
-            Sri Lanka's next big idea.
+            StartupSri creates a trusted ecosystem where verified entrepreneurs raise microloans
+            and equity funding — and investors confidently support the next generation of digital innovation.
           </Typography>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 6 }}>
             <Button
