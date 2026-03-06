@@ -58,6 +58,10 @@ const projectSchema = new mongoose.Schema(
       enum: ['pending', 'approved', 'rejected', 'funded', 'active', 'completed'],
       default: 'pending',
     },
+    rejectionReason: {
+      type: String,
+      trim: true,
+    },
     documents: {
       businessPlan: String,
       financialProjections: String,

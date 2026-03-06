@@ -21,6 +21,8 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
+import HomeIcon from '@mui/icons-material/Home'
+import Tooltip from '@mui/material/Tooltip'
 import PeopleIcon from '@mui/icons-material/People'
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
@@ -99,7 +101,7 @@ export default function Register() {
 
         setSuccess(true)
         dispatch(logout())
-        router.push('/login')
+        router.push('/auth/login')
       } catch (err: any) {
         dispatch(loginFailure(err.message || 'Registration failed. Please try again.'))
       }
@@ -133,14 +135,27 @@ export default function Register() {
               StartupSri
             </Typography>
           </Box>
-          <Link
-            component="button"
-            variant="body2"
-            onClick={() => router.push('/login')}
-            sx={{ fontWeight: 600, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
-          >
-            Already have an account? <Box component="span" sx={{ color: 'primary.main' }}>Sign In</Box>
-          </Link>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title="Back to Home">
+              <IconButton
+                onClick={() => router.push('/')}
+                sx={{
+                  color: '#0a1940',
+                  '&:hover': { bgcolor: 'rgba(10,25,64,0.08)' },
+                }}
+              >
+                <HomeIcon />
+              </IconButton>
+            </Tooltip>
+            <Link
+              component="button"
+              variant="body2"
+              onClick={() => router.push('/auth/login')}
+              sx={{ fontWeight: 600, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+            >
+              Already have an account? <Box component="span" sx={{ color: 'primary.main' }}>Sign In</Box>
+            </Link>
+          </Box>
         </Box>
 
         {/* Centered card */}
@@ -204,7 +219,7 @@ export default function Register() {
                 <Grid item xs={6}>
                   <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 0.75, display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.7rem' }}>First Name</Typography>
                   <TextField
-                    fullWidth id="firstName" name="firstName" placeholder="Amara"
+                    fullWidth id="firstName" name="firstName" placeholder="First Name"
                     value={formik.values.firstName} onChange={formik.handleChange} onBlur={formik.handleBlur}
                     error={formik.touched.firstName && Boolean(formik.errors.firstName)}
                     helperText={formik.touched.firstName && formik.errors.firstName}
@@ -214,7 +229,7 @@ export default function Register() {
                 <Grid item xs={6}>
                   <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', mb: 0.75, display: 'block', textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '0.7rem' }}>Last Name</Typography>
                   <TextField
-                    fullWidth id="lastName" name="lastName" placeholder="Silva"
+                    fullWidth id="lastName" name="lastName" placeholder="Last Name"
                     value={formik.values.lastName} onChange={formik.handleChange} onBlur={formik.handleBlur}
                     error={formik.touched.lastName && Boolean(formik.errors.lastName)}
                     helperText={formik.touched.lastName && formik.errors.lastName}
@@ -318,7 +333,7 @@ export default function Register() {
                 Already have an account?{' '}
                 <Link
                   component="button" variant="body2"
-                  onClick={() => router.push('/login')}
+                  onClick={() => router.push('/auth/login')}
                   sx={{ fontWeight: 700, color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                 >
                   Sign In

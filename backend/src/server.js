@@ -11,6 +11,7 @@ const userRoutes = require('./routes/userRoutes')
 const projectRoutes = require('./routes/projectRoutes')
 const investmentRoutes = require('./routes/investmentRoutes')
 const paymentRoutes = require('./routes/paymentRoutes')
+const adminRoutes = require('./routes/adminRoutes')
 const { errorHandler } = require('./middleware/errorHandler')
 
 dotenv.config()
@@ -54,6 +55,7 @@ app.use('/api/users', userRoutes)
 app.use('/api/projects', projectRoutes)
 app.use('/api/investments', investmentRoutes)
 app.use('/api/payments', paymentRoutes)
+app.use('/api/admin', adminRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {

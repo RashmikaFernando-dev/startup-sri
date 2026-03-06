@@ -18,6 +18,8 @@ export default function Navbar() {
   }
 
   const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
     dispatch(logout())
     router.push('/')
   }
@@ -106,7 +108,7 @@ export default function Navbar() {
         ) : (
           <>
             <Button
-              onClick={() => router.push('/login')}
+              onClick={() => router.push('/auth/login')}
               sx={{
                 color: '#374151', textTransform: 'none', fontWeight: 600,
                 fontSize: '0.875rem', borderRadius: 2, px: 2,
@@ -117,7 +119,7 @@ export default function Navbar() {
             </Button>
             <Button
               variant="contained"
-              onClick={() => router.push('/register')}
+              onClick={() => router.push('/auth/register')}
               sx={{
                 textTransform: 'none', fontWeight: 700, fontSize: '0.875rem',
                 borderRadius: 2, px: 2.5, bgcolor: '#0a1940', boxShadow: 'none',

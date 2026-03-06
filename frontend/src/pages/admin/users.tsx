@@ -6,16 +6,10 @@ import {
   Typography,
   Avatar,
   Chip,
-  Button,
   Divider,
-  IconButton,
-  Tooltip,
 } from '@mui/material'
-import LogoutIcon from '@mui/icons-material/Logout'
-import DashboardIcon from '@mui/icons-material/Dashboard'
-import PeopleIcon from '@mui/icons-material/People'
-import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import AdminNavbar from '@/components/admin/AdminNavbar'
+import AdminSidebar from '@/components/admin/AdminSidebar'
 
 interface User {
   _id: string
@@ -27,12 +21,6 @@ interface User {
   isVerified: boolean
   createdAt: string
 }
-
-const sidebarItems = [
-  { key: 'overview', label: 'Overview', icon: <DashboardIcon fontSize="small" />, href: '/admin/dashboard' },
-  { key: 'projects', label: 'Projects', icon: <RocketLaunchIcon fontSize="small" />, href: '/admin/projects' },
-  { key: 'users', label: 'Users', icon: <PeopleIcon fontSize="small" />, href: '/admin/users' },
-]
 
 export default function AdminUsers() {
   const router = useRouter()
@@ -59,7 +47,7 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:5000/api/users', { headers: { Authorization: `Bearer ${token()}` } })
+      const res = await fetch('http://localhost:5000/api/admin/users', { headers: { Authorization: `Bearer ${token()}` } })
       const data = await res.json()
       if (data.success) setUsers(data.data)
     } catch {} finally { setLoading(false) }
@@ -77,69 +65,15 @@ export default function AdminUsers() {
 
       <Box sx={{ minHeight: '100vh', bgcolor: '#f7f8fa', display: 'flex', flexDirection: 'column' }}>
 
-        {/* Top Nav */}
-        <Box sx={{ bgcolor: '#0a1940', px: { xs: 2, md: 4 }, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box sx={{ width: 32, height: 32, borderRadius: '50%', bgcolor: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <AdminPanelSettingsIcon sx={{ color: '#fff', fontSize: 18 }} />
-            </Box>
-            <Typography variant="h6" sx={{ fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
-              StartupSri <Typography component="span" variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500, ml: 0.5 }}>Admin</Typography>
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 34, height: 34, fontSize: 13, fontWeight: 700, color: '#fff' }}>
-              {admin?.firstName?.[0]}{admin?.lastName?.[0]}
-            </Avatar>
-            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)', display: { xs: 'none', sm: 'block' } }}>
-              {admin?.firstName} {admin?.lastName}
-            </Typography>
-            <Tooltip title="Logout">
-              <IconButton size="small" onClick={handleLogout} sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#fff' } }}>
-                <LogoutIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Box>
+        <AdminNavbar admin={admin} onLogout={handleLogout} />
 
         {/* Body */}
         <Box sx={{ flex: 1, display: 'flex', maxWidth: 1200, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, gap: 3 }}>
 
-          {/* Sidebar */}
-          <Box sx={{ width: 200, flexShrink: 0, bgcolor: '#fff', borderRadius: 3, border: '1px solid #e5e7eb', p: 2, height: 'fit-content', display: { xs: 'none', md: 'block' } }}>
-            <Typography variant="caption" sx={{ color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, px: 1 }}>
-              Admin Menu
-            </Typography>
-            <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-              {sidebarItems.map(item => (
-                <Box key={item.key} onClick={() => router.push(item.href)} sx={{
-                  display: 'flex', alignItems: 'center', gap: 1.5,
-                  px: 2, py: 1.2, borderRadius: 2, cursor: 'pointer',
-                  bgcolor: item.key === 'users' ? '#0a1940' : 'transparent',
-                  color: item.key === 'users' ? '#fff' : '#374151',
-                  fontWeight: item.key === 'users' ? 700 : 400, fontSize: '0.875rem',
-                  transition: 'all 0.15s',
-                  '&:hover': { bgcolor: item.key === 'users' ? '#0a1940' : '#f3f4f6' },
-                }}>
-                  {item.icon}{item.label}
-                </Box>
-              ))}
-            </Box>
-          </Box>
+          <AdminSidebar activeKey="users" />
 
           {/* Main Content */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-
-            {/* Mobile tabs */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 1, mb: 2 }}>
-              {sidebarItems.map(item => (
-                <Button key={item.key} size="small"
-                  variant={item.key === 'users' ? 'contained' : 'outlined'}
-                  onClick={() => router.push(item.href)}
-                  sx={{ borderRadius: 2, textTransform: 'none', bgcolor: item.key === 'users' ? '#0a1940' : undefined }}
-                  startIcon={item.icon}>{item.label}</Button>
-              ))}
-            </Box>
 
             <Typography variant="h5" sx={{ fontWeight: 800, color: '#0a1940', mb: 1 }}>Users</Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>All registered platform users</Typography>

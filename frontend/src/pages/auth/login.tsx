@@ -18,6 +18,8 @@ import {
 } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
+import HomeIcon from '@mui/icons-material/Home'
+import Tooltip from '@mui/material/Tooltip'
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
 
@@ -65,8 +67,12 @@ export default function Login() {
         dispatch(loginSuccess({ user: data.user, token: data.token }))
 
         setSuccess(true)
-        // Redirect to dashboard after 1.5 seconds
-        setTimeout(() => router.push('/user/dashboard'), 1500)
+        // Redirect based on role
+        const role = data.user?.role
+        setTimeout(() => {
+          if (role === 'investor') router.push('/user/projects')
+          else router.push('/user/dashboard')
+        }, 1500)
       } catch (err: any) {
         dispatch(loginFailure(err.message || 'Login failed. Please check your credentials.'))
       }
@@ -116,14 +122,27 @@ export default function Login() {
               StartupSri
             </Typography>
           </Box>
-          <Link
-            component="button"
-            variant="body2"
-            onClick={() => router.push('/register')}
-            sx={{ fontWeight: 600, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
-          >
-            Don't have an account? <Box component="span" sx={{ color: 'primary.main' }}>Sign Up</Box>
-          </Link>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title="Back to Home">
+              <IconButton
+                onClick={() => router.push('/')}
+                sx={{
+                  color: '#0a1940',
+                  '&:hover': { bgcolor: 'rgba(10,25,64,0.08)' },
+                }}
+              >
+                <HomeIcon />
+              </IconButton>
+            </Tooltip>
+            <Link
+              component="button"
+              variant="body2"
+              onClick={() => router.push('/auth/register')}
+              sx={{ fontWeight: 600, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+            >
+              Don't have an account? <Box component="span" sx={{ color: 'primary.main' }}>Sign Up</Box>
+            </Link>
+          </Box>
         </Box>
 
         {/* Centered card area */}
@@ -275,7 +294,7 @@ export default function Login() {
                 <Link
                   component="button"
                   variant="body2"
-                  onClick={() => router.push('/register')}
+                  onClick={() => router.push('/auth/register')}
                   sx={{ fontWeight: 700, color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                 >
                   Sign Up

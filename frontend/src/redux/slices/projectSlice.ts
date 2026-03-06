@@ -1,23 +1,28 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
-interface Project {
+export interface Project {
   _id: string
   title: string
   description: string
-  fundingGoal: number
-  fundingType: 'microloan' | 'equity'
-  status: 'pending' | 'approved' | 'rejected' | 'funded' | 'active' | 'completed'
+  longDescription?: string
   category: string
-  entrepreneur: {
-    _id?: string
-    id?: string
-    name?: string
-    email?: string
-  }
+  fundingType: 'microloan' | 'equity'
+  fundingGoal: number
   currentFunding: number
   interestRate?: number
   equityOffered?: number
   duration?: number
+  status: 'pending' | 'approved' | 'rejected' | 'funded' | 'active' | 'completed'
+  investors?: { user: string; amount: number }[]
+  entrepreneur: {
+    _id?: string
+    firstName?: string
+    lastName?: string
+    email?: string
+    phone?: string
+    startupName?: string
+  }
+  documents?: { businessPlan?: string }
   createdAt: string
 }
 

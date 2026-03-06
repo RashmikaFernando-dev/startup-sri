@@ -13,20 +13,16 @@ import {
   Divider,
   Alert,
   Snackbar,
-  Avatar,
-  Chip,
-  IconButton,
-  Tooltip,
   LinearProgress,
 } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
-import LogoutIcon from '@mui/icons-material/Logout'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import UserNavbar from '@/components/user/UserNavbar'
 
 const CATEGORIES = ['Software', 'Hardware', 'SaaS', 'Mobile App', 'Web Platform', 'AI/ML', 'Other']
 
-const STEPS = ['Basic Info', 'Funding Details', 'Review & Submit']
+const STEPS = ['Basic Info', 'Funding Details', 'Documents', 'Review & Submit']
 
 interface User {
   id: string
@@ -48,18 +44,20 @@ export default function SubmitProject() {
   const [form, setForm] = useState({
     title: '',
     description: '',
+    longDescription: '',
     category: '',
     fundingType: 'microloan',
     fundingGoal: '',
     interestRate: '',
     equityOffered: '',
     duration: '',
+    businessPlan: '',
   })
 
   useEffect(() => {
     const stored = localStorage.getItem('user')
     const token = localStorage.getItem('token')
-    if (!stored || !token) { router.push('/login'); return }
+    if (!stored || !token) { router.push('/auth/login'); return }
     const parsed = JSON.parse(stored)
     setUser(parsed)
     const img = localStorage.getItem(`profileImage_${parsed.id}`)
@@ -111,12 +109,14 @@ export default function SubmitProject() {
         fundingType: form.fundingType,
         fundingGoal: Number(form.fundingGoal),
       }
+      if (form.longDescription.trim()) body.longDescription = form.longDescription.trim()
       if (form.fundingType === 'microloan') {
         body.interestRate = Number(form.interestRate)
         body.duration = Number(form.duration)
       } else {
         body.equityOffered = Number(form.equityOffered)
       }
+      if (form.businessPlan.trim()) body.documents = { businessPlan: form.businessPlan.trim() }
       const res = await fetch('http://localhost:5000/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -146,7 +146,7 @@ export default function SubmitProject() {
       <>
         <Head><title>Project Submitted – StartupSri</title></Head>
         <Box sx={{ minHeight: '100vh', bgcolor: '#f7f8fa', display: 'flex', flexDirection: 'column' }}>
-          <NavBar user={user} profileImage={profileImage} onLogout={handleLogout} onBack={() => router.push('/user/dashboard')} />
+          <UserNavbar user={user} profileImage={profileImage} onLogout={handleLogout} onBack={() => router.push('/user/dashboard')} backLabel="Submit Project" />
           <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 2, py: 8 }}>
             <Box sx={{ textAlign: 'center', maxWidth: 480 }}>
               <Box sx={{ width: 72, height: 72, borderRadius: '50%', bgcolor: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', mx: 'auto', mb: 3 }}>
@@ -163,7 +163,7 @@ export default function SubmitProject() {
                   Go to Dashboard
                 </Button>
                 <Button variant="outlined"
-                  onClick={() => { setSubmitted(false); setStep(0); setForm({ title: '', description: '', category: '', fundingType: 'microloan', fundingGoal: '', interestRate: '', equityOffered: '', duration: '' }) }}
+                  onClick={() => { setSubmitted(false); setStep(0); setForm({ title: '', description: '', longDescription: '', category: '', fundingType: 'microloan', fundingGoal: '', interestRate: '', equityOffered: '', duration: '', businessPlan: '' }) }}
                   sx={{ borderRadius: 2, textTransform: 'none', borderColor: '#d1d5db', color: '#374151' }}>
                   Submit Another
                 </Button>
@@ -179,7 +179,7 @@ export default function SubmitProject() {
     <>
       <Head><title>Submit Project – StartupSri</title></Head>
       <Box sx={{ minHeight: '100vh', bgcolor: '#f7f8fa', display: 'flex', flexDirection: 'column' }}>
-        <NavBar user={user} profileImage={profileImage} onLogout={handleLogout} onBack={() => router.push('/user/dashboard')} />
+        <UserNavbar user={user} profileImage={profileImage} onLogout={handleLogout} onBack={() => router.push('/user/dashboard')} backLabel="Submit Project" />
 
         <Box sx={{ flex: 1, maxWidth: 720, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 5 }}>
 
@@ -235,9 +235,14 @@ export default function SubmitProject() {
                   helperText="Give your startup a clear, memorable name"
                 />
                 <TextField
-                  label="Description *" fullWidth multiline rows={4} value={form.description}
+                  label="Short Description *" fullWidth multiline rows={3} value={form.description}
                   onChange={e => set('description', e.target.value)}
-                  helperText="Explain what your startup does and why investors should care"
+                  helperText="A brief summary shown on the project card (1–2 sentences)"
+                />
+                <TextField
+                  label="Long Description" fullWidth multiline rows={5} value={form.longDescription}
+                  onChange={e => set('longDescription', e.target.value)}
+                  helperText="Detailed explanation of your startup, problem, solution and traction (optional)"
                 />
                 <FormControl fullWidth>
                   <InputLabel>Category *</InputLabel>
@@ -290,8 +295,27 @@ export default function SubmitProject() {
               </Box>
             )}
 
-            {/* ── Step 2: Review ── */}
+            {/* ── Step 2: Documents ── */}
             {step === 2 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1940' }}>Documents</Typography>
+                <Divider />
+                <Typography variant="body2" color="text.secondary">
+                  Paste a publicly accessible URL to your business plan (optional).
+                </Typography>
+                <TextField
+                  label="Business Plan URL"
+                  fullWidth
+                  value={form.businessPlan}
+                  onChange={e => set('businessPlan', e.target.value)}
+                  placeholder="https://..."
+                  helperText="e.g. a Google Docs or PDF link visible to anyone with the link"
+                />
+              </Box>
+            )}
+
+            {/* ── Step 3: Review ── */}
+            {step === 3 && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1940' }}>Review Your Listing</Typography>
                 <Divider />
@@ -312,6 +336,12 @@ export default function SubmitProject() {
                   <Typography variant="body2" sx={{ fontWeight: 700, color: '#0369a1', mb: 0.5 }}>Description</Typography>
                   <Typography variant="body2" color="text.secondary">{form.description}</Typography>
                 </Box>
+                {form.businessPlan && (
+                  <>
+                    <Divider />
+                    <ReviewRow label="Business Plan" value="Attached" />
+                  </>
+                )}
                 <Alert severity="info" sx={{ mt: 1 }}>
                   Your project will be reviewed by our admin team before going live. This usually takes 1–2 business days.
                 </Alert>
@@ -354,37 +384,6 @@ export default function SubmitProject() {
 }
 
 // ── Mini components ────────────────────────────────────────────────────────────
-
-function NavBar({ user, profileImage, onLogout, onBack }: { user: User | null; profileImage: string | null; onLogout: () => void; onBack: () => void }) {
-  return (
-    <Box sx={{ bgcolor: '#fff', borderBottom: '1px solid #e5e7eb', px: { xs: 2, md: 4 }, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Tooltip title="Back to Dashboard">
-          <IconButton size="small" onClick={onBack} sx={{ color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 1.5 }}>
-            <ArrowBackIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Typography variant="h6" sx={{ fontWeight: 800, color: '#0a1940', letterSpacing: '-0.02em', cursor: 'pointer' }} onClick={onBack}>
-          StartupSri
-        </Typography>
-        <Chip label="Submit Project" size="small" sx={{ bgcolor: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }} />
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Avatar src={profileImage || undefined} sx={{ bgcolor: '#0a1940', width: 34, height: 34, fontSize: 13, fontWeight: 700 }}>
-          {!profileImage && `${user?.firstName?.[0]}${user?.lastName?.[0]}`}
-        </Avatar>
-        <Typography variant="body2" sx={{ fontWeight: 600, color: '#0a1940', display: { xs: 'none', sm: 'block' } }}>
-          {user?.firstName} {user?.lastName}
-        </Typography>
-        <Tooltip title="Logout">
-          <IconButton size="small" onClick={onLogout} sx={{ color: '#6b7280' }}>
-            <LogoutIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      </Box>
-    </Box>
-  )
-}
 
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (

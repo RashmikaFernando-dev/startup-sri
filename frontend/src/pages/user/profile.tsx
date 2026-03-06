@@ -11,19 +11,17 @@ import {
   Chip,
   Divider,
   TextField,
-  IconButton,
-  Tooltip,
   Alert,
   Snackbar,
 } from '@mui/material'
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import PersonIcon from '@mui/icons-material/Person'
 import SettingsIcon from '@mui/icons-material/Settings'
 import CameraAltIcon from '@mui/icons-material/CameraAlt'
-import LogoutIcon from '@mui/icons-material/Logout'
 import NotificationsIcon from '@mui/icons-material/Notifications'
 import SecurityIcon from '@mui/icons-material/Security'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import LogoutIcon from '@mui/icons-material/Logout'
+import UserNavbar from '@/components/user/UserNavbar'
 
 const tabs = [
   { key: 'info', label: 'Profile Info', icon: <PersonIcon fontSize="small" /> },
@@ -41,7 +39,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const token = localStorage.getItem('token')
-    if (!token) { router.push('/login'); return }
+    if (!token) { router.push('/auth/login'); return }
     // Load profile image
     if (user?.id) {
       const img = localStorage.getItem(`profileImage_${user.id}`)
@@ -87,33 +85,13 @@ export default function ProfilePage() {
       <Head><title>Profile – StartupSri</title></Head>
       <Box sx={{ minHeight: '100vh', bgcolor: '#f7f8fa', display: 'flex', flexDirection: 'column' }}>
 
-        {/* Top Nav */}
-        <Box sx={{ bgcolor: '#fff', borderBottom: '1px solid #e5e7eb', px: { xs: 2, md: 4 }, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Tooltip title="Back to Dashboard">
-              <IconButton size="small" onClick={() => router.push('/user/dashboard')} sx={{ color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 1.5 }}>
-                <ArrowBackIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-            <Typography variant="h6" sx={{ fontWeight: 800, color: '#0a1940', letterSpacing: '-0.02em', cursor: 'pointer' }} onClick={() => router.push('/user/dashboard')}>
-              StartupSri
-            </Typography>
-            <Chip label="Profile" size="small" sx={{ bgcolor: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }} />
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Avatar src={profileImage || undefined} sx={{ bgcolor: '#0a1940', width: 34, height: 34, fontSize: 13, fontWeight: 700 }}>
-              {!profileImage && `${user?.firstName?.[0]}${user?.lastName?.[0]}`}
-            </Avatar>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: '#0a1940', display: { xs: 'none', sm: 'block' } }}>
-              {user?.firstName} {user?.lastName}
-            </Typography>
-            <Tooltip title="Logout">
-              <IconButton size="small" onClick={handleLogout} sx={{ color: '#6b7280' }}>
-                <LogoutIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Box>
+        <UserNavbar
+          user={user}
+          profileImage={profileImage}
+          onLogout={handleLogout}
+          onBack={() => router.push('/user/dashboard')}
+          backLabel="Profile"
+        />
 
         {/* Body */}
         <Box sx={{ flex: 1, maxWidth: 800, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 5 }}>

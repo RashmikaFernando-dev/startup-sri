@@ -39,7 +39,6 @@ import TwitterIcon from '@mui/icons-material/Twitter'
 import FacebookIcon from '@mui/icons-material/Facebook'
 import InstagramIcon from '@mui/icons-material/Instagram'
 
-// ─── Data ────────────────────────────────────────────────────────────────────
 
 const stats = [
   { value: 'LKR 45M+', label: 'Total Funded' },
@@ -187,7 +186,6 @@ const faqs = [
   },
 ]
 
-// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function Home() {
   const router = useRouter()
@@ -199,7 +197,6 @@ export default function Home() {
         <meta name="description" content="Sri Lanka's first microloan and equity crowdfunding platform for tech entrepreneurs" />
       </Head>
 
-      {/* ── Hero ── */}
       <Box
         sx={{
           position: 'relative',
@@ -214,7 +211,6 @@ export default function Home() {
           overflow: 'hidden',
         }}
       >
-        {/* decorative blobs */}
         <Box
           sx={{
             position: 'absolute', top: -100, right: -80, width: 500, height: 500,
@@ -262,7 +258,7 @@ export default function Home() {
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 6 }}>
             <Button
               variant="contained" size="large"
-              onClick={() => router.push('/register')}
+              onClick={() => router.push('/auth/register')}
               endIcon={<ArrowForwardIcon />}
               sx={{
                 px: 4, py: 1.7, fontSize: '1rem', fontWeight: 700, borderRadius: 2, textTransform: 'none',
@@ -395,7 +391,7 @@ export default function Home() {
               </Stack>
               <Button
                 variant="contained" size="large"
-                onClick={() => router.push('/register')}
+                onClick={() => router.push('/auth/register')}
                 endIcon={<ArrowForwardIcon />}
                 sx={{ mt: 5, px: 4, py: 1.5, fontWeight: 700, borderRadius: 2, textTransform: 'none', boxShadow: '0 6px 20px rgba(25,118,210,0.35)' }}
               >
@@ -596,7 +592,7 @@ export default function Home() {
             <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>Still have questions?</Typography>
             <Button
               variant="contained" size="large"
-              onClick={() => router.push('/register')}
+              onClick={() => router.push('/auth/register')}
               sx={{ px: 4, py: 1.5, fontWeight: 700, borderRadius: 2, textTransform: 'none', boxShadow: '0 6px 20px rgba(25,118,210,0.3)' }}
             >
               Contact Support
@@ -640,7 +636,7 @@ export default function Home() {
             />
             <Button
               variant="contained" size="large"
-              onClick={() => router.push('/register')}
+              onClick={() => router.push('/auth/register')}
               sx={{
                 px: 4, py: 1.5, fontWeight: 700, borderRadius: 2, textTransform: 'none',
                 bgcolor: '#ff9800', '&:hover': { bgcolor: '#f57c00', transform: 'translateY(-2px)' },

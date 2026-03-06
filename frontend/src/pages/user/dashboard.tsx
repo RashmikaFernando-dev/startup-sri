@@ -14,16 +14,13 @@ import {
   Typography,
   Button,
   Chip,
-  Avatar,
   LinearProgress,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Alert,
   Snackbar,
-  Tooltip,
 } from '@mui/material'
 import Footer from '../../components/layout/Footer'
 import EditIcon from '@mui/icons-material/Edit'
@@ -31,12 +28,12 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import ListAltIcon from '@mui/icons-material/ListAlt'
-import LogoutIcon from '@mui/icons-material/Logout'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import PersonIcon from '@mui/icons-material/Person'
 import SettingsIcon from '@mui/icons-material/Settings'
+import UserNavbar from '@/components/user/UserNavbar'
 
-// ── Sidebar items ──────────────────────────────────────────────────────────────
+// Sidebar items 
 const sidebarItems = [
   { key: 'apply', label: 'Apply to raise', icon: <RocketLaunchIcon fontSize="small" /> },
   { key: 'listings', label: 'My Listings', icon: <ListAltIcon fontSize="small" /> },
@@ -66,12 +63,12 @@ export default function Dashboard() {
     open: false, msg: '', type: 'success',
   })
 
-  // Delete confirm dialog ──────────────────────────────────────────────
+  // Delete confirm dialog
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token')
-    if (!storedToken) { router.push('/login'); return }
+    if (!storedToken) { router.push('/auth/login'); return }
     // Load profile image (kept in localStorage keyed by user id)
     const userStr = localStorage.getItem('user')
     if (userStr) {
@@ -83,7 +80,7 @@ export default function Dashboard() {
     }
   }, [])
 
-  // ── Fetch my projects ────────────────────────────────────────────────────────
+  // Fetch my projects 
   useEffect(() => {
     if (!user) return
     fetchProjects()
@@ -111,7 +108,7 @@ export default function Dashboard() {
     }
   }
 
-  // ── Delete project ───────────────────────────────────────────────────────────
+  // Delete project
   const handleDelete = async () => {
     if (!deleteId) return
     try {
@@ -131,7 +128,6 @@ export default function Dashboard() {
     }
   }
 
-  // ── Logout ───────────────────────────────────────────────────────────────────
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
@@ -139,14 +135,14 @@ export default function Dashboard() {
     router.push('/')
   }
 
-  // ── Sidebar click ────────────────────────────────────────────────────────────
+
   const handleSidebarClick = (key: string) => {
     if (key === 'apply') { router.push('/user/submit-project'); return }
     if (key === 'profile' || key === 'settings') { router.push('/user/profile'); return }
     setActiveTab(key)
   }
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
+  
   const pct = (p: { currentFunding: number; fundingGoal: number }) =>
     Math.min(Math.round((p.currentFunding / p.fundingGoal) * 100), 100)
   const fmt = (n: number) => `LKR ${n.toLocaleString()}`
@@ -159,42 +155,7 @@ export default function Dashboard() {
 
       <Box sx={{ minHeight: '100vh', bgcolor: '#f7f8fa', display: 'flex', flexDirection: 'column' }}>
 
-        {/* ── Top Nav ── */}
-        <Box sx={{
-          bgcolor: '#fff', borderBottom: '1px solid #e5e7eb',
-          px: { xs: 2, md: 4 }, py: 1.5,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <Box
-            sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}
-            onClick={() => router.push('/')}
-          >
-            <Box component="img" src="/StartupSri.svg" alt="logo"
-              sx={{ width: 32, height: 32, objectFit: 'contain' }}
-              onError={(e: any) => { e.target.style.display = 'none' }}
-            />
-            <Typography variant="h6" sx={{ fontWeight: 800, color: '#0a1940', letterSpacing: '-0.02em' }}>
-              StartupSri
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Avatar
-              src={profileImage || undefined}
-              sx={{ bgcolor: '#0a1940', width: 34, height: 34, fontSize: 14 }}
-            >
-              {!profileImage && `${user?.firstName?.[0]}${user?.lastName?.[0]}`}
-            </Avatar>
-            <Typography variant="body2" sx={{ fontWeight: 600, color: '#0a1940', display: { xs: 'none', sm: 'block' } }}>
-              {user?.firstName} {user?.lastName}
-            </Typography>
-            <Tooltip title="Logout">
-              <IconButton size="small" onClick={handleLogout} sx={{ color: '#6b7280' }}>
-                <LogoutIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Box>
+        <UserNavbar user={user} profileImage={profileImage} onLogout={handleLogout} />
 
         {/* ── Body ── */}
         <Box sx={{ flex: 1, display: 'flex', maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, gap: 3 }}>

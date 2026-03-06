@@ -1,4 +1,6 @@
 const Project = require('../models/Project')
+const User = require('../models/User')
+const { sendProjectApprovalEmail } = require('../utils/emailService')
 
 // @desc    Get all projects
 // @route   GET /api/projects
@@ -127,4 +129,52 @@ const deleteProject = async (req, res, next) => {
   }
 }
 
-module.exports = { getProjects, getProject, createProject, updateProject, deleteProject }
+// @desc    Approve or reject a project
+// @route   PUT /api/projects/:id/status
+// @access  Private (Admin)
+const updateProjectStatus = async (req, res, next) => {
+  try {
+    const { status, rejectionReason } = req.body
+
+    const allowed = ['approved', 'rejected', 'active', 'completed']
+    if (!allowed.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Status must be one of: ${allowed.join(', ')}`,
+      })
+    }
+
+    const project = await Project.findById(req.params.id).populate(
+      'entrepreneur',
+      'firstName lastName email'
+    )
+
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Project not found' })
+    }
+
+    project.status = status
+    if (status === 'rejected' && rejectionReason) {
+      project.rejectionReason = rejectionReason
+    }
+    await project.save()
+
+    // Send email notification to the entrepreneur
+    if (status === 'approved') {
+      try {
+        await sendProjectApprovalEmail(
+          project.entrepreneur.email,
+          project.title
+        )
+      } catch (emailErr) {
+        console.error('Failed to send approval email:', emailErr.message)
+      }
+    }
+
+    res.status(200).json({ success: true, data: project })
+  } catch (error) {
+    next(error)
+  }
+}
+
+module.exports = { getProjects, getProject, createProject, updateProject, deleteProject, updateProjectStatus }
