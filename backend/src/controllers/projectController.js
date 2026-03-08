@@ -1,5 +1,6 @@
 const Project = require('../models/Project')
 const User = require('../models/User')
+const KycVerification = require('../models/KycVerification')
 const { sendProjectApprovalEmail } = require('../utils/emailService')
 
 // @desc    Get all projects
@@ -55,6 +56,18 @@ const getProject = async (req, res, next) => {
 // @access  Private (Entrepreneur)
 const createProject = async (req, res, next) => {
   try {
+    // Only admin can bypass KYC check
+    if (req.user.role !== 'admin') {
+      const kyc = await KycVerification.findOne({ user: req.user.id, status: 'approved' })
+      if (!kyc) {
+        return res.status(403).json({
+          success: false,
+          message: 'KYC verification required. Please complete identity verification before submitting a project.',
+          kycRequired: true,
+        })
+      }
+    }
+
     req.body.entrepreneur = req.user.id
     const project = await Project.create(req.body)
     res.status(201).json({ success: true, data: project })
