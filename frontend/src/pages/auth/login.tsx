@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
+import { useAppDispatch, useAppSelector } from '@/hooks/useTypedSelector'
+import { loginStart, loginSuccess, loginFailure } from '@/redux/slices/authSlice'
 import {
   Box,
   Typography,
@@ -16,6 +18,8 @@ import {
 } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
+import HomeIcon from '@mui/icons-material/Home'
+import Tooltip from '@mui/material/Tooltip'
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
 
@@ -30,9 +34,9 @@ const validationSchema = Yup.object({
 
 export default function Login() {
   const router = useRouter()
-  const [error, setError] = useState<string | null>(null)
+  const dispatch = useAppDispatch()
+  const { loading, error } = useAppSelector((s) => s.auth)
   const [success, setSuccess] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
   const formik = useFormik({
@@ -42,9 +46,8 @@ export default function Login() {
     },
     validationSchema,
     onSubmit: async (values) => {
-      setLoading(true)
-      setError(null)
-      
+      dispatch(loginStart())
+
       try {
         const res = await fetch('http://localhost:5000/api/auth/login', {
           method: 'POST',
@@ -58,17 +61,20 @@ export default function Login() {
           throw new Error(data.message || 'Login failed')
         }
 
-        // Save token to localStorage
+        // Persist to localStorage and update Redux store
         localStorage.setItem('token', data.token)
         localStorage.setItem('user', JSON.stringify(data.user))
+        dispatch(loginSuccess({ user: data.user, token: data.token }))
 
         setSuccess(true)
-        // Redirect to dashboard after 1.5 seconds
-        setTimeout(() => router.push('/user/dashboard'), 1500)
+        // Redirect based on role
+        const role = data.user?.role
+        setTimeout(() => {
+          if (role === 'investor') router.push('/user/projects')
+          else router.push('/user/dashboard')
+        }, 1500)
       } catch (err: any) {
-        setError(err.message || 'Login failed. Please check your credentials.')
-      } finally {
-        setLoading(false)
+        dispatch(loginFailure(err.message || 'Login failed. Please check your credentials.'))
       }
     },
   })
@@ -116,14 +122,27 @@ export default function Login() {
               StartupSri
             </Typography>
           </Box>
-          <Link
-            component="button"
-            variant="body2"
-            onClick={() => router.push('/register')}
-            sx={{ fontWeight: 600, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
-          >
-            Don't have an account? <Box component="span" sx={{ color: 'primary.main' }}>Sign Up</Box>
-          </Link>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Tooltip title="Back to Home">
+              <IconButton
+                onClick={() => router.push('/')}
+                sx={{
+                  color: '#0a1940',
+                  '&:hover': { bgcolor: 'rgba(10,25,64,0.08)' },
+                }}
+              >
+                <HomeIcon />
+              </IconButton>
+            </Tooltip>
+            <Link
+              component="button"
+              variant="body2"
+              onClick={() => router.push('/auth/register')}
+              sx={{ fontWeight: 600, color: 'text.secondary', textDecoration: 'none', '&:hover': { color: 'primary.main' } }}
+            >
+              Don't have an account? <Box component="span" sx={{ color: 'primary.main' }}>Sign Up</Box>
+            </Link>
+          </Box>
         </Box>
 
         {/* Centered card area */}
@@ -275,7 +294,7 @@ export default function Login() {
                 <Link
                   component="button"
                   variant="body2"
-                  onClick={() => router.push('/register')}
+                  onClick={() => router.push('/auth/register')}
                   sx={{ fontWeight: 700, color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
                 >
                   Sign Up
