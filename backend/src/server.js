@@ -1,6 +1,10 @@
 const express = require('express')
 const dotenv = require('dotenv')
+const path = require('path')
 const cors = require('cors')
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') })
+
 const helmet = require('helmet')
 const compression = require('compression')
 const mongoSanitize = require('express-mongo-sanitize')
@@ -12,9 +16,8 @@ const projectRoutes = require('./routes/projectRoutes')
 const investmentRoutes = require('./routes/investmentRoutes')
 const paymentRoutes = require('./routes/paymentRoutes')
 const adminRoutes = require('./routes/adminRoutes')
+const kycRoutes = require('./routes/kycRoutes')
 const { errorHandler } = require('./middleware/errorHandler')
-
-dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -43,8 +46,8 @@ app.use(
 )
 
 // Body Parser
-app.use(express.json())
-app.use(express.urlencoded({ extended: true }))
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // Compression
 app.use(compression())
@@ -56,6 +59,7 @@ app.use('/api/projects', projectRoutes)
 app.use('/api/investments', investmentRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/admin', adminRoutes)
+app.use('/api/kyc', kycRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {
