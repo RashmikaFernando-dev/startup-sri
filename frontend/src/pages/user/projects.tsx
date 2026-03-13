@@ -32,7 +32,7 @@ import {
   InputLabel,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn'
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import GroupIcon from '@mui/icons-material/Group'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import PieChartIcon from '@mui/icons-material/PieChart'
@@ -115,29 +115,30 @@ export default function InvestorDashboard() {
     }
   }
 
-  const handleInvest = async () => {
+  const handleProceedToCheckout = () => {
     if (!selectedProject || !investAmount) return
     const amount = parseFloat(investAmount)
     if (isNaN(amount) || amount <= 0) {
       setToast({ open: true, msg: 'Please enter a valid amount.', type: 'error' })
       return
     }
-    try {
-      const authToken = token || localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/investments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ projectId: selectedProject._id, amount }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Investment failed')
-      setToast({ open: true, msg: `Successfully invested LKR ${amount.toLocaleString()}!`, type: 'success' })
-      setInvestDialog(false)
-      setInvestAmount('')
-      fetchProjects()
-    } catch (e: any) {
-      setToast({ open: true, msg: e.message || 'Investment failed.', type: 'error' })
-    }
+    const p = selectedProject
+    router.push({
+      pathname: '/user/checkout',
+      query: {
+        projectId: p._id,
+        projectTitle: p.title,
+        amount: amount.toString(),
+        fundingType: p.fundingType,
+        ...(p.fundingType === 'microloan' && {
+          interestRate: p.interestRate?.toString(),
+          duration: p.duration?.toString(),
+        }),
+        ...(p.fundingType === 'equity' && {
+          equityOffered: p.equityOffered?.toString(),
+        }),
+      },
+    })
   }
 
   const handleLogout = () => {
@@ -339,7 +340,7 @@ export default function InvestorDashboard() {
                 {/* Stats */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
                   {[
-                    { icon: <MonetizationOnIcon sx={{ fontSize: 18, color: '#6b7280' }} />, label: 'Goal', value: fmt(p.fundingGoal) },
+                    { icon: <AccountBalanceIcon sx={{ fontSize: 18, color: '#6b7280' }} />, label: 'Goal', value: fmt(p.fundingGoal) },
                     { icon: <GroupIcon sx={{ fontSize: 18, color: '#6b7280' }} />, label: 'Investors', value: p.investors?.length ? `${p.investors.length}` : 'N/A' },
                     { icon: <CalendarTodayIcon sx={{ fontSize: 18, color: '#6b7280' }} />, label: 'Days left', value: p.duration ? `${p.duration} months` : 'N/A' },
                     ...(p.fundingType === 'equity'
@@ -391,7 +392,7 @@ export default function InvestorDashboard() {
             <TextField
               fullWidth
               type="number"
-              placeholder="e.g. 50000"
+              placeholder="e.g. 10000"
               value={investAmount}
               onChange={e => setInvestAmount(e.target.value)}
               InputProps={{ startAdornment: <InputAdornment position="start">LKR</InputAdornment> }}
@@ -402,10 +403,10 @@ export default function InvestorDashboard() {
             <Button onClick={() => setInvestDialog(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
             <Button
               variant="contained"
-              onClick={handleInvest}
+              onClick={handleProceedToCheckout}
               sx={{ bgcolor: '#0a1940', borderRadius: 2, textTransform: 'none', fontWeight: 700, '&:hover': { bgcolor: '#1565c0' } }}
             >
-              Confirm Investment
+              Proceed to Payment
             </Button>
           </DialogActions>
         </Dialog>

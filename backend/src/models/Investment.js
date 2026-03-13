@@ -15,7 +15,7 @@ const investmentSchema = new mongoose.Schema(
     amount: {
       type: Number,
       required: [true, 'Investment amount is required'],
-      min: [25000, 'Minimum investment is LKR 25,000'],
+      min: [100, 'Minimum investment is LKR 100'],
     },
     type: {
       type: String,
