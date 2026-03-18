@@ -1,24 +1,6 @@
 import Head from 'next/head'
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  Grid,
-  Card,
-  CardContent,
-  Avatar,
-  Chip,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  LinearProgress,
-  TextField,
-  Divider,
-  Stack,
-  IconButton,
-  Paper,
-} from '@mui/material'
+import { useEffect, useState } from 'react'
+import { Box, Container, Typography, Button, Grid, Card, CardContent, Avatar, Chip, Accordion, AccordionSummary, AccordionDetails, LinearProgress, TextField, Divider, Stack, IconButton } from '@mui/material'
 import { useRouter } from 'next/router'
 import Layout from '@/components/layout/Layout'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
@@ -38,6 +20,7 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn'
 import TwitterIcon from '@mui/icons-material/Twitter'
 import FacebookIcon from '@mui/icons-material/Facebook'
 import InstagramIcon from '@mui/icons-material/Instagram'
+import api from '@/utils/api'
 
 
 const stats = [
@@ -49,32 +32,32 @@ const stats = [
 
 const features = [
   {
-    icon: <AccountCircleIcon sx={{ fontSize: 36, color: 'primary.main' }} />,
+    icon: <AccountCircleIcon sx={{ fontSize: 36, color: '#7f68ff' }} />,
     title: 'Startup Profiles',
     desc: 'Create rich, verified entrepreneur profiles that highlight your skills, project details, and track record to attract funding.',
   },
   {
-    icon: <TrendingUpIcon sx={{ fontSize: 36, color: 'primary.main' }} />,
+    icon: <TrendingUpIcon sx={{ fontSize: 36, color: '#7f68ff' }} />,
     title: 'Investor Matching',
     desc: 'Our platform surfaces your project to investors who are most likely to fund ventures in your category and stage.',
   },
   {
-    icon: <BarChartIcon sx={{ fontSize: 36, color: 'primary.main' }} />,
+    icon: <BarChartIcon sx={{ fontSize: 36, color: '#7f68ff' }} />,
     title: 'Funding Analytics',
     desc: 'Track funding progress, investor engagement, and milestone completion with real-time dashboard analytics.',
   },
   {
-    icon: <PublicIcon sx={{ fontSize: 36, color: 'primary.main' }} />,
+    icon: <PublicIcon sx={{ fontSize: 36, color: '#7f68ff' }} />,
     title: 'Global Network',
     desc: 'Connect with a worldwide network of investors, including Sri Lankan diaspora ready to back local innovation.',
   },
   {
-    icon: <VerifiedUserIcon sx={{ fontSize: 36, color: 'primary.main' }} />,
+    icon: <VerifiedUserIcon sx={{ fontSize: 36, color: '#7f68ff' }} />,
     title: 'Due Diligence Tools',
     desc: 'Multi-layer KYC, NIC verification, and document checks ensure every entrepreneur and project is credible.',
   },
   {
-    icon: <AccountBalanceWalletIcon sx={{ fontSize: 36, color: 'primary.main' }} />,
+    icon: <AccountBalanceWalletIcon sx={{ fontSize: 36, color: '#7f68ff' }} />,
     title: 'Portfolio Management',
     desc: 'Investors can track all contributions, expected returns, and repayment schedules from a single dashboard.',
   },
@@ -103,63 +86,60 @@ const steps = [
   },
 ]
 
-const featuredStartups = [
-  {
-    name: 'EduTech LK',
-    category: 'EdTech · SaaS',
-    raised: 1800000,
-    target: 2000000,
-    equity: '8%',
-    daysLeft: 14,
-    image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&q=80',
-    founder: 'Ravindu P.',
-    status: 'Active',
-  },
-  {
-    name: 'HealthConnect SL',
-    category: 'HealthTech · Mobile',
-    raised: 3200000,
-    target: 4000000,
-    equity: '10%',
-    daysLeft: 21,
-    image: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=800&q=80',
-    founder: 'Amara S.',
-    status: 'Active',
-  },
-  {
-    name: 'AgriAI Sri Lanka',
-    category: 'AgriTech · AI',
-    raised: 900000,
-    target: 1500000,
-    equity: '12%',
-    daysLeft: 30,
-    image: 'https://images.unsplash.com/photo-1586771107445-d3ca888129ff?auto=format&fit=crop&w=800&q=80',
-    founder: 'Dinesh K.',
-    status: 'Active',
-  },
-]
+type ProjectCardItem = {
+  id: string
+  name: string
+  category: string
+  raised: number
+  target: number
+  equity: string
+  daysLeft: number
+  founder: string
+  status: string
+}
 
 const testimonials = [
   {
-    quote: 'StartupSri helped us connect with the perfect investors. We secured our seed round in full in just 6 weeks.',
-    name: 'Sarah Johnson',
-    title: 'CEO, TechNova',
+    quote: 'We reduced investor response time by almost 40% after moving our pipeline and outreach into StartupSri.',
+    name: 'Ravindu Fernando',
+    title: 'Founder, NovaStack',
     avatar: 'S',
-    color: '#1976d2',
+    color: '#4f46e5',
   },
   {
-    quote: "As a diaspora investor, I couldn't find a trusted platform for Sri Lankan startups. StartupSri changed all that with full transparency.",
+    quote: 'As an overseas investor, I finally have visibility into verified projects, milestones, and repayments in one place.',
     name: 'Kamal Perera',
-    title: 'Investor, London',
+    title: 'Angel Investor',
     avatar: 'K',
-    color: '#ff9800',
+    color: '#2563eb',
   },
   {
-    quote: "We're building our credit history while growing the business. The repayment dashboard keeps everything on track.",
-    name: 'Nimal Dias',
-    title: 'Founder, BuildFlow',
+    quote: 'The workflow automation helped my team stay focused on product while investor communication ran continuously.',
+    name: 'Madushka Gunasekara',
+    title: 'Co-Founder, BuildFlow',
     avatar: 'N',
-    color: '#4caf50',
+    color: '#0ea5e9',
+  },
+  {
+    quote: 'We launched our campaign in days, not weeks. The templates and AI guidance saved us from costly trial and error.',
+    name: 'Pasan Senanayake',
+    title: 'Founder, AgroPulse',
+    avatar: 'P',
+    color: '#7c3aed',
+  },
+  {
+    quote: 'The compliance checks gave our board confidence. Every update is traceable and every interaction is documented.',
+    name: 'Bhavindu De Silva',
+    title: 'Operations Lead',
+    avatar: 'B',
+    color: '#0891b2',
+  },
+  {
+    quote: 'Our close rate improved because the right investors saw the right data at the right moment, automatically.',
+    name: 'Dinuka Rodrigo',
+    title: 'CEO, Ventra Labs',
+    avatar: 'D',
+    color: '#4f46e5',
   },
 ]
 
@@ -189,12 +169,64 @@ const faqs = [
 
 export default function Home() {
   const router = useRouter()
+  const displayFont = '"Poppins", "Segoe UI", sans-serif'
+  const [featuredProjects, setFeaturedProjects] = useState<ProjectCardItem[]>([])
+  const [projectsLoading, setProjectsLoading] = useState(true)
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const response = await api.get('/projects')
+        const projects = Array.isArray(response.data?.data) ? response.data.data : []
+
+        const mapped: ProjectCardItem[] = projects
+          .filter((project: any) => ['approved', 'active', 'funded'].includes(project.status))
+          .slice(0, 3)
+          .map((project: any) => {
+            const endDate = project.endDate ? new Date(project.endDate) : null
+            const today = new Date()
+            const daysLeft = endDate
+              ? Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
+              : 30
+
+            const founderName = project.entrepreneur
+              ? `${project.entrepreneur.firstName || ''} ${project.entrepreneur.lastName || ''}`.trim()
+              : 'Unknown Founder'
+
+            return {
+              id: project._id,
+              name: project.title,
+              category: `${project.category} · ${project.fundingType === 'equity' ? 'Equity' : 'Microloan'}`,
+              raised: Number(project.currentFunding || 0),
+              target: Number(project.fundingGoal || 0),
+              equity: project.fundingType === 'equity'
+                ? `${Number(project.equityOffered || 0)}%`
+                : `${Number(project.interestRate || 0)}% APR`,
+              daysLeft,
+              founder: founderName || 'Unknown Founder',
+              status: (project.status || 'active').charAt(0).toUpperCase() + (project.status || 'active').slice(1),
+            }
+          })
+
+        setFeaturedProjects(mapped)
+      } catch (error) {
+        setFeaturedProjects([])
+      } finally {
+        setProjectsLoading(false)
+      }
+    }
+
+    loadProjects()
+  }, [])
 
   return (
     <Layout>
       <Head>
         <title>StartupSri – Funding Platform for Tech Entrepreneurs</title>
         <meta name="description" content="Sri Lanka's first microloan and equity crowdfunding platform for tech entrepreneurs" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </Head>
 
       <Box
@@ -204,7 +236,7 @@ export default function Home() {
           display: 'flex',
           alignItems: 'center',
           backgroundImage:
-            'linear-gradient(135deg, rgba(10,25,60,0.92) 0%, rgba(21,65,132,0.85) 60%, rgba(0,0,0,0.75) 100%), url(https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=2000&q=80)',
+            'radial-gradient(circle at 15% 15%, rgba(127,104,255,0.32), transparent 30%), radial-gradient(circle at 80% 8%, rgba(91,194,255,0.22), transparent 34%), linear-gradient(155deg, rgba(15,16,36,0.92) 0%, rgba(27,29,62,0.84) 55%, rgba(39,35,93,0.82) 100%), url(https://imageio.forbes.com/specials-images/imageserve/643ee558bb3476ae781e5605/0x0.jpg?format=jpg&height=900&width=1600&fit=bounds)',
           backgroundSize: 'cover',
           backgroundPosition: 'center top',
           color: 'white',
@@ -228,7 +260,8 @@ export default function Home() {
           }}
         />
 
-        <Container maxWidth="lg" sx={{ py: { xs: 10, md: 14 }, position: 'relative', zIndex: 1 }}>
+        <Container  maxWidth={false} sx={{  py: { xs: 10, md: 14 },  position: 'relative', zIndex: 1,px: { xs: 2.5, md: 5, lg: 7 } }} >
+          
           <Chip
             label="Sri Lanka's #1 Tech Startup Funding Platform"
             sx={{
@@ -241,12 +274,13 @@ export default function Home() {
             component="h1"
             sx={{
               fontWeight: 800,
+              fontFamily: displayFont,
               fontSize: { xs: '2.4rem', sm: '3.2rem', md: '4rem', lg: '4.6rem' },
               mb: 3, lineHeight: 1.1, letterSpacing: '-0.02em', maxWidth: 800,
             }}
           >
             Where Sri Lanka's Tech Dreams<br />
-            Meet{' '}<Box component="span" sx={{ color: '#ffb74d' }}>Smart Capital</Box>
+            Meet{' '}<Box component="span" sx={{ color: '#7f68ff' }}>Smart Capital</Box>
           </Typography>
           <Typography
             variant="h6"
@@ -262,8 +296,8 @@ export default function Home() {
               endIcon={<ArrowForwardIcon />}
               sx={{
                 px: 4, py: 1.7, fontSize: '1rem', fontWeight: 700, borderRadius: 2, textTransform: 'none',
-                bgcolor: '#1976d2', boxShadow: '0 8px 24px rgba(25,118,210,0.45)',
-                '&:hover': { bgcolor: '#1565c0', transform: 'translateY(-2px)', boxShadow: '0 12px 28px rgba(25,118,210,0.5)' },
+                bgcolor: '#7f68ff', boxShadow: '0 14px 32px rgba(127,104,255,0.44)',
+                '&:hover': { bgcolor: '#6e57ef', transform: 'translateY(-2px)', boxShadow: '0 18px 34px rgba(127,104,255,0.5)' },
                 transition: 'all 0.2s',
               }}
             >
@@ -271,18 +305,26 @@ export default function Home() {
             </Button>
             <Button
               variant="outlined" size="large"
-              onClick={() => router.push('/register?type=investor')}
+              onClick={() => router.push('/auth/register?type=investor')}
               sx={{
                 px: 4, py: 1.7, fontSize: '1rem', fontWeight: 700, borderRadius: 2, textTransform: 'none',
-                color: 'white', borderColor: 'rgba(255,255,255,0.6)',
-                '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)', transform: 'translateY(-2px)' },
+                color: 'white',
+                borderColor: 'rgba(255,255,255,0.4)',
+                bgcolor: 'rgba(255,255,255,0.05)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                '&:hover': {
+                  borderColor: 'rgba(255,255,255,0.75)',
+                  bgcolor: 'rgba(255,255,255,0.14)',
+                  transform: 'translateY(-2px)',
+                },
                 transition: 'all 0.2s',
               }}
             >
               Become an Investor
             </Button>
           </Stack>
-          <Stack direction="row" spacing={3} sx={{ opacity: 0.75 }} flexWrap="wrap" useFlexGap>
+          <Stack direction="row" spacing={1.5} sx={{ opacity: 0.75 }} flexWrap="wrap" useFlexGap>
             {['Verified Entrepreneurs', 'Secure Payments', 'Transparent Funding', 'CRIB-Ready Reports'].map((t) => (
               <Box key={t} sx={{ display: 'flex', alignItems: 'center', gap: 0.7 }}>
                 <CheckCircleIcon sx={{ fontSize: 16, color: '#81c784' }} />
@@ -294,9 +336,14 @@ export default function Home() {
       </Box>
 
       {/* ── Stats Bar ── */}
-      <Box sx={{ bgcolor: 'primary.main', py: { xs: 4, md: 5 } }}>
+      <Box sx={{ bgcolor: '#f3f4fb', py: { xs: 4, md: 5 } }}>
         <Container maxWidth="lg">
-          <Grid container spacing={2} justifyContent="center">
+          <Grid container spacing={2} justifyContent="center" sx={{
+            background: 'linear-gradient(95deg, #17192d 0%, #2a2f57 100%)',
+            borderRadius: 4,
+            p: { xs: 2.2, md: 3.2 },
+            border: '1px solid rgba(183,187,255,0.2)',
+          }}>
             {stats.map((s) => (
               <Grid item xs={6} md={3} key={s.label}>
                 <Box sx={{ textAlign: 'center' }}>
@@ -314,11 +361,11 @@ export default function Home() {
       </Box>
 
       {/* ── Features ── */}
-      <Box id="features" sx={{ py: { xs: 8, md: 12 }, bgcolor: '#fafafa' }}>
+      <Box id="features" sx={{ py: { xs: 8, md: 12 }, bgcolor: '#f4f5fb' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 8 }}>
-            <Chip label="Features" color="primary" variant="outlined" sx={{ mb: 2, fontWeight: 600 }} />
-            <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: '2rem', md: '2.5rem' } }}>
+            <Chip label="Features" variant="outlined" sx={{ mb: 2, fontWeight: 700, bgcolor: '#ece9ff', borderColor: '#cfc9ff', color: '#4b3fbd' }} />
+            <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: '2rem', md: '2.5rem' }, fontFamily: displayFont, color: '#1f2343' }}>
               Everything You Need to Succeed
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 620, mx: 'auto', fontSize: '1.05rem', lineHeight: 1.8 }}>
@@ -331,16 +378,18 @@ export default function Home() {
               <Grid item xs={12} sm={6} md={4} key={f.title}>
                 <Card
                   sx={{
-                    height: '100%', p: 1, border: '1px solid', borderColor: 'grey.100',
+                    height: '100%', p: 1, border: '1px solid', borderColor: '#e4e7f5',
+                    borderRadius: 4,
+                    background: 'linear-gradient(180deg, #ffffff 0%, #fafbff 100%)',
                     transition: 'all 0.25s',
-                    '&:hover': { transform: 'translateY(-6px)', boxShadow: '0 16px 40px rgba(25,118,210,0.12)', borderColor: 'primary.light' },
+                    '&:hover': { transform: 'translateY(-6px)', boxShadow: '0 20px 44px rgba(53,58,120,0.14)', borderColor: '#b9beef' },
                   }}
                 >
                   <CardContent sx={{ p: 3 }}>
                     <Box
                       sx={{
                         width: 60, height: 60, borderRadius: 2,
-                        background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                        background: 'linear-gradient(135deg, #ede9ff 0%, #d9ecff 100%)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2.5,
                       }}
                     >
@@ -357,12 +406,12 @@ export default function Home() {
       </Box>
 
       {/* ── How It Works ── */}
-      <Box id="how-it-works" sx={{ py: { xs: 8, md: 12 } }}>
+      <Box id="how-it-works" sx={{ py: { xs: 8, md: 12 }, background: 'linear-gradient(180deg, #ffffff 0%, #f7f8fd 100%)' }}>
         <Container maxWidth="lg">
           <Grid container spacing={8} alignItems="center">
             <Grid item xs={12} md={6}>
-              <Chip label="Process" color="primary" variant="outlined" sx={{ mb: 2, fontWeight: 600 }} />
-              <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: '2rem', md: '2.5rem' } }}>
+              <Chip label="Process" variant="outlined" sx={{ mb: 2, fontWeight: 700, bgcolor: '#ece9ff', borderColor: '#cfc9ff', color: '#4b3fbd' }} />
+              <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: '2rem', md: '2.5rem' }, fontFamily: displayFont, color: '#1f2343' }}>
                 How It Works
               </Typography>
               <Typography variant="body1" color="text.secondary" sx={{ mb: 5, lineHeight: 1.8 }}>
@@ -374,7 +423,7 @@ export default function Home() {
                     <Box
                       sx={{
                         minWidth: 52, height: 52, borderRadius: '50%',
-                        bgcolor: i < 2 ? 'primary.main' : 'grey.200',
+                        bgcolor: i < 2 ? '#7f68ff' : '#e4e6f4',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                       }}
                     >
@@ -393,7 +442,17 @@ export default function Home() {
                 variant="contained" size="large"
                 onClick={() => router.push('/auth/register')}
                 endIcon={<ArrowForwardIcon />}
-                sx={{ mt: 5, px: 4, py: 1.5, fontWeight: 700, borderRadius: 2, textTransform: 'none', boxShadow: '0 6px 20px rgba(25,118,210,0.35)' }}
+                sx={{
+                  mt: 5,
+                  px: 4,
+                  py: 1.5,
+                  fontWeight: 700,
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  bgcolor: '#111111',
+                  boxShadow: '0 10px 26px rgba(0,0,0,0.3)',
+                  '&:hover': { bgcolor: '#000000' },
+                }}
               >
                 Get Started Free
               </Button>
@@ -402,32 +461,16 @@ export default function Home() {
               <Box
                 sx={{
                   position: 'relative', borderRadius: 4, overflow: 'hidden',
-                  boxShadow: '0 24px 64px rgba(0,0,0,0.15)',
+                  boxShadow: '0 24px 58px rgba(34,42,96,0.25)',
                   '&:hover img': { transform: 'scale(1.03)' },
                 }}
               >
                 <Box
                   component="img"
-                  src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=900&q=80"
+                  src="https://t4.ftcdn.net/jpg/05/22/92/93/360_F_522929332_1Httbekzbw2qIaTEjrT9ZlI1uYOtK0FA.jpg"
                   alt="How it works"
                   sx={{ width: '100%', height: 480, objectFit: 'cover', display: 'block', transition: 'transform 0.4s ease' }}
                 />
-                <Paper
-                  elevation={8}
-                  sx={{
-                    position: 'absolute', bottom: 24, left: 24, right: 24, p: 2.5, borderRadius: 3,
-                    background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(12px)',
-                    display: 'flex', gap: 2, alignItems: 'center',
-                  }}
-                >
-                  <Avatar sx={{ bgcolor: 'success.main', width: 44, height: 44 }}>
-                    <CheckCircleIcon />
-                  </Avatar>
-                  <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>HealthConnect SL just reached funding target</Typography>
-                    <Typography variant="caption" color="text.secondary">LKR 4,000,000 raised · 2 mins ago</Typography>
-                  </Box>
-                </Paper>
               </Box>
             </Grid>
           </Grid>
@@ -435,46 +478,56 @@ export default function Home() {
       </Box>
 
       {/* ── Featured Startups ── */}
-      <Box id="opportunities" sx={{ bgcolor: '#fafafa', py: { xs: 8, md: 12 } }}>
+      <Box id="opportunities" sx={{ bgcolor: '#f4f5fb', py: { xs: 8, md: 12 } }}>
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, mb: 6, flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
             <Box>
-              <Chip label="Opportunities" color="primary" variant="outlined" sx={{ mb: 1.5, fontWeight: 600 }} />
-              <Typography variant="h3" sx={{ fontWeight: 700, fontSize: { xs: '2rem', md: '2.5rem' } }}>Featured Startups</Typography>
+              <Chip label="Opportunities" variant="outlined" sx={{ mb: 1.5, fontWeight: 700, bgcolor: '#ece9ff', borderColor: '#cfc9ff', color: '#4b3fbd' }} />
+              <Typography variant="h3" sx={{ fontWeight: 700, fontSize: { xs: '2rem', md: '2.5rem' }, fontFamily: displayFont, color: '#1f2343' }}>Featured Startups</Typography>
               <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>Meet your next investment opportunity</Typography>
             </Box>
             <Button
               variant="outlined" size="large" endIcon={<ArrowForwardIcon />}
               onClick={() => router.push('/user/projects')}
-              sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 2, px: 3, flexShrink: 0 }}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 700,
+                borderRadius: 2,
+                px: 3,
+                flexShrink: 0,
+                color: '#111111',
+                borderColor: '#111111',
+                '&:hover': { borderColor: '#000000', bgcolor: 'rgba(0,0,0,0.04)' },
+              }}
             >
               Discover More
             </Button>
           </Box>
           <Grid container spacing={3}>
-            {featuredStartups.map((s) => {
-              const pct = Math.round((s.raised / s.target) * 100)
+            {(projectsLoading ? [] : featuredProjects).map((s) => {
+              const targetSafe = s.target > 0 ? s.target : 1
+              const pct = Math.min(100, Math.round((s.raised / targetSafe) * 100))
               return (
-                <Grid item xs={12} md={4} key={s.name}>
+                <Grid item xs={12} md={4} key={s.id}>
                   <Card
                     sx={{
                       height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                      borderRadius: 4,
+                      border: '1px solid #e4e7f5',
+                      background: 'linear-gradient(180deg, #ffffff 0%, #fafbff 100%)',
                       transition: 'all 0.25s',
-                      '&:hover': { transform: 'translateY(-6px)', boxShadow: '0 20px 45px rgba(0,0,0,0.12)' },
+                      '&:hover': { transform: 'translateY(-6px)', boxShadow: '0 18px 42px rgba(53,58,120,0.14)' },
                     }}
                   >
-                    <Box sx={{ position: 'relative' }}>
-                      <Box
-                        component="img" src={s.image} alt={s.name}
-                        sx={{ width: '100%', height: 200, objectFit: 'cover', display: 'block' }}
-                      />
-                      <Chip
-                        label={s.status} size="small"
-                        sx={{ position: 'absolute', top: 12, right: 12, bgcolor: 'success.main', color: 'white', fontWeight: 700, fontSize: '0.7rem' }}
-                      />
-                    </Box>
                     <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                      <Chip label={s.category} size="small" variant="outlined" color="primary" sx={{ mb: 1.5, fontWeight: 600 }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                        <Chip label={s.category} size="small" variant="outlined" color="primary" sx={{ fontWeight: 600 }} />
+                        <Chip
+                          label={s.status}
+                          size="small"
+                          sx={{ bgcolor: 'success.main', color: 'white', fontWeight: 700, fontSize: '0.7rem' }}
+                        />
+                      </Box>
                       <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>{s.name}</Typography>
                       <Typography variant="caption" color="text.secondary">by {s.founder}</Typography>
                       <Box sx={{ mt: 2.5, mb: 1 }}>
@@ -499,7 +552,13 @@ export default function Home() {
                         <Button
                           variant="contained" size="small"
                           onClick={() => router.push('/user/projects')}
-                          sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 1.5 }}
+                          sx={{
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            borderRadius: 1.5,
+                            bgcolor: '#111111',
+                            '&:hover': { bgcolor: '#000000' },
+                          }}
                         >
                           Learn More
                         </Button>
@@ -509,42 +568,83 @@ export default function Home() {
                 </Grid>
               )
             })}
+
+            {!projectsLoading && featuredProjects.length === 0 && (
+              <Grid item xs={12}>
+                <Card sx={{ borderRadius: 3, border: '1px dashed #c7cbe6', boxShadow: 'none' }}>
+                  <CardContent sx={{ p: 4, textAlign: 'center' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#1f2343' }}>
+                      No Approved Projects Yet
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Featured startups will appear here once projects are approved and active.
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      onClick={() => router.push('/auth/register')}
+                      sx={{ bgcolor: '#111111', '&:hover': { bgcolor: '#000000' } }}
+                    >
+                      Submit a Project
+                    </Button>
+                  </CardContent>
+                </Card>
+              </Grid>
+            )}
+
+            {projectsLoading && (
+              <Grid item xs={12}>
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+                  Loading featured projects...
+                </Typography>
+              </Grid>
+            )}
           </Grid>
         </Container>
       </Box>
 
       {/* ── Testimonials ── */}
-      <Box sx={{ py: { xs: 8, md: 12 } }}>
+      <Box sx={{ py: { xs: 8, md: 10 }, bgcolor: '#f2f3f5' }}>
         <Container maxWidth="lg">
-          <Box sx={{ textAlign: 'center', mb: 7 }}>
-            <Chip label="Success Stories" color="primary" variant="outlined" sx={{ mb: 2, fontWeight: 600 }} />
-            <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: '2rem', md: '2.5rem' } }}>
-              Hear From Our Community
+          <Box sx={{ textAlign: 'center', mb: 4.5 }}>
+            <Typography
+              variant="h3"
+              sx={{
+                fontWeight: 700,
+                mb: 1,
+                fontSize: { xs: '1.9rem', md: '2.3rem' },
+                fontFamily: displayFont,
+                color: '#1f2937',
+              }}
+            >
+              Our client Feedback
             </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: 'auto' }}>
-              Founders and investors share their experiences with StartupSri.
+            <Typography variant="body2" sx={{ color: '#6b7280', maxWidth: 640, mx: 'auto' }}>
+              Through direct reviews, founders and investors shared how StartupSri improved funding operations and transparency.
             </Typography>
           </Box>
-          <Grid container spacing={3}>
+          <Grid container spacing={2}>
             {testimonials.map((t) => (
-              <Grid item xs={12} md={4} key={t.name}>
+              <Grid item xs={12} sm={6} md={4} key={t.name}>
                 <Card
                   sx={{
-                    height: '100%', p: 1, border: '1px solid', borderColor: 'grey.100',
+                    height: '100%',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 2,
+                    background: '#ffffff',
                     transition: 'all 0.25s',
-                    '&:hover': { boxShadow: '0 12px 36px rgba(0,0,0,0.1)', transform: 'translateY(-4px)' },
+                    '&:hover': { boxShadow: '0 8px 18px rgba(15,23,42,0.08)', transform: 'translateY(-2px)' },
                   }}
                 >
-                  <CardContent sx={{ p: 3 }}>
-                    <FormatQuoteIcon sx={{ fontSize: 36, color: 'primary.light', mb: 1.5 }} />
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 3, lineHeight: 1.8, fontStyle: 'italic' }}>
-                      "{t.quote}"
+                  <CardContent sx={{ p: 2.2 }}>
+                    <Typography variant="body2" sx={{ color: '#374151', lineHeight: 1.6, minHeight: 90 }}>
+                      {t.quote}
                     </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar sx={{ bgcolor: t.color, fontWeight: 700 }}>{t.avatar}</Avatar>
+                    <Divider sx={{ my: 1.5, borderColor: '#e5e7eb' }} />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                      <Avatar sx={{ bgcolor: t.color, fontWeight: 700, width: 34, height: 34, fontSize: '0.88rem' }}>{t.avatar}</Avatar>
                       <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{t.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">{t.title}</Typography>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.86rem', lineHeight: 1.2 }}>{t.name}</Typography>
+                        <Typography variant="caption" sx={{ color: '#6b7280' }}>{t.title}</Typography>
                       </Box>
                     </Box>
                   </CardContent>
@@ -552,15 +652,21 @@ export default function Home() {
               </Grid>
             ))}
           </Grid>
+          <Box sx={{ textAlign: 'center', mt: 4.5 }}>
+            <Typography sx={{ fontSize: '0.86rem', color: '#374151', fontWeight: 600 }}>Compliance And Security</Typography>
+            <Typography sx={{ fontSize: '0.72rem', color: '#9ca3af', mt: 0.3 }}>
+              Startup policy compliance and KYC standards are built into every workflow.
+            </Typography>
+          </Box>
         </Container>
       </Box>
 
       {/* ── FAQ ── */}
-      <Box sx={{ bgcolor: '#fafafa', py: { xs: 8, md: 12 } }}>
+      <Box sx={{ bgcolor: '#f4f5fb', py: { xs: 8, md: 12 } }}>
         <Container maxWidth="md">
           <Box sx={{ textAlign: 'center', mb: 7 }}>
-            <Chip label="FAQ" color="primary" variant="outlined" sx={{ mb: 2, fontWeight: 600 }} />
-            <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: '2rem', md: '2.5rem' } }}>
+            <Chip label="FAQ" variant="outlined" sx={{ mb: 2, fontWeight: 700, bgcolor: '#ece9ff', borderColor: '#cfc9ff', color: '#4b3fbd' }} />
+            <Typography variant="h3" sx={{ fontWeight: 700, mb: 2, fontSize: { xs: '2rem', md: '2.5rem' }, fontFamily: displayFont, color: '#1f2343' }}>
               Frequently Asked Questions
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 560, mx: 'auto' }}>
@@ -572,11 +678,11 @@ export default function Home() {
               <Accordion
                 key={i}
                 sx={{
-                  border: '1px solid', borderColor: 'grey.200',
+                  border: '1px solid', borderColor: '#dfe3f3',
                   borderRadius: '12px !important',
                   '&:before': { display: 'none' },
                   boxShadow: 'none',
-                  '&.Mui-expanded': { boxShadow: '0 4px 20px rgba(25,118,210,0.1)' },
+                  '&.Mui-expanded': { boxShadow: '0 10px 24px rgba(53,58,120,0.14)' },
                 }}
               >
                 <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 3, py: 1 }}>
@@ -593,7 +699,16 @@ export default function Home() {
             <Button
               variant="contained" size="large"
               onClick={() => router.push('/auth/register')}
-              sx={{ px: 4, py: 1.5, fontWeight: 700, borderRadius: 2, textTransform: 'none', boxShadow: '0 6px 20px rgba(25,118,210,0.3)' }}
+              sx={{
+                px: 4,
+                py: 1.5,
+                fontWeight: 700,
+                borderRadius: 2,
+                textTransform: 'none',
+                bgcolor: '#111111',
+                boxShadow: '0 10px 24px rgba(0,0,0,0.3)',
+                '&:hover': { bgcolor: '#000000' },
+              }}
             >
               Contact Support
             </Button>
@@ -605,7 +720,7 @@ export default function Home() {
       <Box
         sx={{
           py: { xs: 8, md: 12 },
-          background: 'linear-gradient(135deg, #0a1940 0%, #1565c0 100%)',
+          background: 'linear-gradient(120deg, #17192d 0%, #2b2a5c 62%, #5847bd 100%)',
           color: 'white',
         }}
       >
@@ -639,7 +754,7 @@ export default function Home() {
               onClick={() => router.push('/auth/register')}
               sx={{
                 px: 4, py: 1.5, fontWeight: 700, borderRadius: 2, textTransform: 'none',
-                bgcolor: '#ff9800', '&:hover': { bgcolor: '#f57c00', transform: 'translateY(-2px)' },
+                bgcolor: '#111111', '&:hover': { bgcolor: '#000000', transform: 'translateY(-2px)' },
                 transition: 'all 0.2s', whiteSpace: 'nowrap',
               }}
             >
@@ -653,8 +768,8 @@ export default function Home() {
       <Box sx={{ py: { xs: 8, md: 12 }, bgcolor: '#fff' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 7 }}>
-            <Chip label="Contact Us" color="primary" variant="outlined" sx={{ mb: 2, fontWeight: 600 }} />
-            <Typography variant="h3" sx={{ fontWeight: 700, mb: 1.5, fontSize: { xs: '2rem', md: '2.5rem' } }}>Get In Touch</Typography>
+            <Chip label="Contact Us" variant="outlined" sx={{ mb: 2, fontWeight: 700, bgcolor: '#ece9ff', borderColor: '#cfc9ff', color: '#4b3fbd' }} />
+            <Typography variant="h3" sx={{ fontWeight: 700, mb: 1.5, fontSize: { xs: '2rem', md: '2.5rem' }, fontFamily: displayFont, color: '#1f2343' }}>Get In Touch</Typography>
             <Typography variant="body1" color="text.secondary">Have questions or want to connect with our team? Reach out to us.</Typography>
           </Box>
           <Grid container spacing={5} alignItems="flex-start">
@@ -669,7 +784,7 @@ export default function Home() {
                     <Box
                       sx={{
                         width: 48, height: 48, borderRadius: 2,
-                        background: 'linear-gradient(135deg, #e3f2fd, #bbdefb)',
+                        background: 'linear-gradient(135deg, #ede9ff, #d9ecff)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                       }}
                     >
@@ -684,7 +799,7 @@ export default function Home() {
               </Stack>
             </Grid>
             <Grid item xs={12} md={7}>
-              <Card sx={{ p: 1, border: '1px solid', borderColor: 'grey.100' }}>
+              <Card sx={{ p: 1, border: '1px solid', borderColor: '#e4e7f5', borderRadius: 4, boxShadow: '0 18px 36px rgba(53,58,120,0.12)' }}>
                 <CardContent sx={{ p: 3 }}>
                   <Grid container spacing={2.5}>
                     <Grid item xs={12} sm={6}>
@@ -702,7 +817,15 @@ export default function Home() {
                     <Grid item xs={12}>
                       <Button
                         variant="contained" size="large" fullWidth
-                        sx={{ py: 1.5, fontWeight: 700, borderRadius: 2, textTransform: 'none', boxShadow: '0 6px 20px rgba(25,118,210,0.3)' }}
+                        sx={{
+                          py: 1.5,
+                          fontWeight: 700,
+                          borderRadius: 2,
+                          textTransform: 'none',
+                          bgcolor: '#111111',
+                          boxShadow: '0 10px 24px rgba(0,0,0,0.3)',
+                          '&:hover': { bgcolor: '#000000' },
+                        }}
                       >
                         Send Message
                       </Button>
@@ -715,82 +838,6 @@ export default function Home() {
         </Container>
       </Box>
 
-      {/* ── Footer ── */}
-      <Box sx={{ bgcolor: '#0a1940', color: 'rgba(255,255,255,0.8)', pt: { xs: 6, md: 8 }, pb: 4 }}>
-        <Container maxWidth="lg">
-          <Grid container spacing={5} sx={{ mb: 5 }}>
-            <Grid item xs={12} md={4}>
-              <Typography variant="h5" sx={{ fontWeight: 800, color: 'white', mb: 1.5 }}>StartupSri</Typography>
-              <Typography variant="body2" sx={{ lineHeight: 1.8, mb: 3, opacity: 0.75 }}>
-                Sri Lanka's first dedicated microloan and equity crowdfunding platform for
-                technology-focused startups. Empowering innovation, one fund at a time.
-              </Typography>
-              <Stack direction="row" spacing={1}>
-                {[<LinkedInIcon />, <TwitterIcon />, <FacebookIcon />, <InstagramIcon />].map((ic, i) => (
-                  <IconButton
-                    key={i} size="small"
-                    sx={{
-                      color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 1.5,
-                      '&:hover': { color: 'white', borderColor: 'white', bgcolor: 'rgba(255,255,255,0.08)' },
-                    }}
-                  >
-                    {ic}
-                  </IconButton>
-                ))}
-              </Stack>
-            </Grid>
-            {[
-              { heading: 'Platform', links: ['How It Works', 'Browse Projects', 'Investor Dashboard', 'Apply for Loan'] },
-              { heading: 'Company', links: ['About Us', 'Blog', 'Careers', 'Press'] },
-              { heading: 'Support', links: ['Help Centre', 'Privacy Policy', 'Terms of Service', 'Contact Us'] },
-            ].map((col) => (
-              <Grid item xs={6} sm={4} md={2.5} key={col.heading}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'white', mb: 2 }}>{col.heading}</Typography>
-                <Stack spacing={1.2}>
-                  {col.links.map((l) => (
-                    <Typography
-                      key={l} variant="body2"
-                      sx={{ opacity: 0.65, cursor: 'pointer', transition: 'opacity 0.15s', '&:hover': { opacity: 1 } }}
-                    >
-                      {l}
-                    </Typography>
-                  ))}
-                </Stack>
-              </Grid>
-            ))}
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'white', mb: 2 }}>Stay Updated</Typography>
-              <Typography variant="body2" sx={{ opacity: 0.65, mb: 2, lineHeight: 1.7 }}>
-                Get the latest startup opportunities and platform news delivered to your inbox.
-              </Typography>
-              <Stack spacing={1}>
-                <TextField
-                  placeholder="Your email" size="small"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      bgcolor: 'rgba(255,255,255,0.08)', borderRadius: 1.5, color: 'white',
-                      '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
-                      '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.4)' },
-                      '& input::placeholder': { color: 'rgba(255,255,255,0.4)', fontSize: '0.85rem' },
-                    },
-                  }}
-                />
-                <Button
-                  variant="contained"
-                  sx={{ textTransform: 'none', fontWeight: 700, borderRadius: 1.5, bgcolor: '#1976d2', '&:hover': { bgcolor: '#1565c0' } }}
-                >
-                  Subscribe →
-                </Button>
-              </Stack>
-            </Grid>
-          </Grid>
-          <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 3 }} />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-            <Typography variant="caption" sx={{ opacity: 0.5 }}>© 2026 StartupSri. All rights reserved.</Typography>
-            <Typography variant="caption" sx={{ opacity: 0.5 }}>Built for Sri Lanka's Digital Economy · BSc (Hons) Software Engineering FYP</Typography>
-          </Box>
-        </Container>
-      </Box>
     </Layout>
   )
 }

@@ -319,8 +319,8 @@ export default function Register() {
                 disabled={loading}
                 sx={{
                   mt: 1, py: 1.5, fontWeight: 700, textTransform: 'none', fontSize: '1rem', borderRadius: 2,
-                  bgcolor: '#0a1940', boxShadow: 'none',
-                  '&:hover': { bgcolor: '#1565c0', boxShadow: '0 4px 16px rgba(21,101,192,0.35)' },
+                  bgcolor: '#111111', boxShadow: 'none',
+                  '&:hover': { bgcolor: '#000000', boxShadow: '0 4px 16px rgba(0,0,0,0.35)' },
                   transition: 'all 0.2s',
                 }}
               >
