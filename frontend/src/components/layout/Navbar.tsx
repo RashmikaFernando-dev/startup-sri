@@ -86,9 +86,9 @@ export default function Navbar() {
             <Button
               onClick={() => router.push('/user/dashboard')}
               sx={{
-                color: '#374151', textTransform: 'none', fontWeight: 600,
+                color: '#111111', textTransform: 'none', fontWeight: 600,
                 fontSize: '0.875rem', borderRadius: 2, px: 2,
-                '&:hover': { bgcolor: '#f3f4f6', color: '#0a1940' },
+                '&:hover': { bgcolor: '#f3f4f6', color: '#000000' },
               }}
             >
               Dashboard
@@ -98,8 +98,8 @@ export default function Navbar() {
               onClick={handleLogout}
               sx={{
                 textTransform: 'none', fontWeight: 600, fontSize: '0.875rem',
-                borderRadius: 2, px: 2.5, borderColor: '#e5e7eb', color: '#6b7280',
-                '&:hover': { borderColor: '#dc2626', color: '#dc2626', bgcolor: '#fff5f5' },
+                borderRadius: 2, px: 2.5, borderColor: '#111111', color: '#111111',
+                '&:hover': { borderColor: '#000000', color: '#000000', bgcolor: 'rgba(0,0,0,0.04)' },
               }}
             >
               Logout
@@ -110,9 +110,9 @@ export default function Navbar() {
             <Button
               onClick={() => router.push('/auth/login')}
               sx={{
-                color: '#374151', textTransform: 'none', fontWeight: 600,
+                color: '#111111', textTransform: 'none', fontWeight: 600,
                 fontSize: '0.875rem', borderRadius: 2, px: 2,
-                '&:hover': { bgcolor: '#f3f4f6', color: '#0a1940' },
+                '&:hover': { bgcolor: '#f3f4f6', color: '#000000' },
               }}
             >
               Login
@@ -122,8 +122,8 @@ export default function Navbar() {
               onClick={() => router.push('/auth/register')}
               sx={{
                 textTransform: 'none', fontWeight: 700, fontSize: '0.875rem',
-                borderRadius: 2, px: 2.5, bgcolor: '#0a1940', boxShadow: 'none',
-                '&:hover': { bgcolor: '#162550', boxShadow: 'none' },
+                borderRadius: 2, px: 2.5, bgcolor: '#111111', boxShadow: 'none',
+                '&:hover': { bgcolor: '#000000', boxShadow: 'none' },
               }}
             >
               Get Started
