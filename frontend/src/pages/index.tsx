@@ -533,7 +533,7 @@ export default function Home() {
                       <Box sx={{ mt: 2.5, mb: 1 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
                           <Typography variant="body2" color="text.secondary">
-                            Raised: <strong>LKR {(s.raised / 1000000).toFixed(1)}M</strong>
+                            Raised: <strong>LKR {s.raised.toLocaleString()}</strong>
                           </Typography>
                           <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main' }}>{pct}%</Typography>
                         </Box>
@@ -542,7 +542,7 @@ export default function Home() {
                           sx={{ height: 7, borderRadius: 4, bgcolor: 'grey.200', '& .MuiLinearProgress-bar': { borderRadius: 4 } }}
                         />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.8 }}>
-                          <Typography variant="caption" color="text.secondary">Target: LKR {(s.target / 1000000).toFixed(1)}M</Typography>
+                          <Typography variant="caption" color="text.secondary">Target: LKR {s.target.toLocaleString()}</Typography>
                           <Typography variant="caption" color="text.secondary">{s.daysLeft} days left</Typography>
                         </Box>
                       </Box>
