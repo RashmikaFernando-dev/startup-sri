@@ -178,13 +178,13 @@ export default function Dashboard() {
                   sx={{
                     display: 'flex', alignItems: 'center', gap: 1.5,
                     px: 2, py: 1.2, borderRadius: 2, cursor: 'pointer',
-                    bgcolor: activeTab === item.key ? '#0a1940' : 'transparent',
+                    bgcolor: activeTab === item.key ? '#111111' : 'transparent',
                     color: activeTab === item.key ? '#fff' : '#374151',
                     fontWeight: activeTab === item.key ? 700 : 400,
                     fontSize: '0.875rem',
                     transition: 'all 0.15s',
                     '&:hover': {
-                      bgcolor: activeTab === item.key ? '#0a1940' : '#f3f4f6',
+                      bgcolor: activeTab === item.key ? '#000000' : '#f3f4f6',
                     },
                   }}
                 >
@@ -199,14 +199,26 @@ export default function Dashboard() {
           <Box sx={{ flex: 1, minWidth: 0 }}>
 
             {/* Mobile tab bar */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 1, mb: 2, flexWrap: 'wrap' }}>
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 1, mb: 2, flexWrap: 'nowrap', overflowX: 'auto', pb: 0.5 }}>
               {sidebarItems.map(item => (
                 <Button
                   key={item.key}
                   size="small"
                   variant={activeTab === item.key ? 'contained' : 'outlined'}
                   onClick={() => handleSidebarClick(item.key)}
-                  sx={{ borderRadius: 2, textTransform: 'none', bgcolor: activeTab === item.key ? '#0a1940' : undefined }}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    bgcolor: activeTab === item.key ? '#111111' : undefined,
+                    color: activeTab === item.key ? '#ffffff' : '#111111',
+                    borderColor: '#111111',
+                    '&:hover': {
+                      bgcolor: activeTab === item.key ? '#000000' : 'rgba(0,0,0,0.04)',
+                      borderColor: '#000000',
+                    },
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
                   startIcon={item.icon}
                 >
                   {item.label}
@@ -226,7 +238,7 @@ export default function Dashboard() {
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => router.push('/user/submit-project')}
-                    sx={{ bgcolor: '#0a1940', borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                    sx={{ bgcolor: '#111111', borderRadius: 2, textTransform: 'none', fontWeight: 700, '&:hover': { bgcolor: '#000000' } }}
                   >
                     New Listing
                   </Button>
@@ -247,7 +259,7 @@ export default function Dashboard() {
                     <Button
                       variant="contained"
                       onClick={() => router.push('/user/submit-project')}
-                      sx={{ bgcolor: '#0a1940', borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                      sx={{ bgcolor: '#111111', borderRadius: 2, textTransform: 'none', fontWeight: 700, '&:hover': { bgcolor: '#000000' } }}
                     >
                       Apply to Raise
                     </Button>
@@ -348,12 +360,19 @@ export default function Dashboard() {
                               sx={{ fontSize: 11, bgcolor: project.fundingType === 'equity' ? '#ede9fe' : '#dbeafe', color: project.fundingType === 'equity' ? '#7c3aed' : '#1d4ed8', border: 'none' }}
                             />
                           </Box>
-                          <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'nowrap', flexShrink: 0 }}>
                             <Button
                               size="small"
                               variant="outlined"
                               startIcon={<EditIcon />}
-                              sx={{ borderRadius: 2, textTransform: 'none', borderColor: '#d1d5db', color: '#374151' }}
+                              sx={{
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                borderColor: '#111111',
+                                color: '#111111',
+                                '&:hover': { borderColor: '#000000', bgcolor: 'rgba(0,0,0,0.04)' },
+                                whiteSpace: 'nowrap',
+                              }}
                             >
                               Edit
                             </Button>
@@ -362,7 +381,14 @@ export default function Dashboard() {
                               variant="outlined"
                               startIcon={<DeleteIcon />}
                               onClick={() => setDeleteId(project._id)}
-                              sx={{ borderRadius: 2, textTransform: 'none', borderColor: '#fca5a5', color: '#dc2626' }}
+                              sx={{
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                borderColor: '#111111',
+                                color: '#111111',
+                                '&:hover': { borderColor: '#000000', bgcolor: 'rgba(0,0,0,0.04)' },
+                                whiteSpace: 'nowrap',
+                              }}
                             >
                               Delete
                             </Button>
@@ -391,8 +417,18 @@ export default function Dashboard() {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDeleteId(null)} sx={{ textTransform: 'none' }}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={handleDelete} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}>
+          <Button onClick={() => setDeleteId(null)} sx={{ textTransform: 'none', color: '#111111' }}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleDelete}
+            sx={{
+              borderRadius: 2,
+              textTransform: 'none',
+              fontWeight: 700,
+              bgcolor: '#111111',
+              '&:hover': { bgcolor: '#000000' },
+            }}
+          >
             Delete
           </Button>
         </DialogActions>

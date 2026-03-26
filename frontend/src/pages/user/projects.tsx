@@ -178,7 +178,7 @@ export default function InvestorDashboard() {
             <Button
               startIcon={<ArrowBackIcon />}
               onClick={() => { setSelectedProject(null); setActiveTab(0) }}
-              sx={{ textTransform: 'none', color: '#374151', fontWeight: 600, borderRadius: 2, mb: 2 }}
+              sx={{ textTransform: 'none', color: '#111111', fontWeight: 600, borderRadius: 2, mb: 2 }}
             >
               Back to Projects
             </Button>
@@ -306,7 +306,7 @@ export default function InvestorDashboard() {
                                 <InsertDriveFileIcon sx={{ color: '#1d4ed8' }} />
                                 <Typography variant="body2" sx={{ fontWeight: 600 }}>Business Plan</Typography>
                               </Box>
-                              <Button size="small" variant="outlined" href={p.documents.businessPlan} target="_blank" sx={{ textTransform: 'none', borderRadius: 2 }}>View</Button>
+                              <Button size="small" variant="outlined" href={p.documents.businessPlan} target="_blank" sx={{ textTransform: 'none', borderRadius: 2, color: '#111111', borderColor: '#111111', '&:hover': { borderColor: '#000000', bgcolor: 'rgba(0,0,0,0.04)' } }}>View</Button>
                             </Box>
                           )}
                         </Box>
@@ -364,8 +364,8 @@ export default function InvestorDashboard() {
                   onClick={() => setInvestDialog(true)}
                   disabled={p.status === 'funded' || p.status === 'completed'}
                   sx={{
-                    bgcolor: '#0a1940', borderRadius: 2, textTransform: 'none', fontWeight: 700,
-                    '&:hover': { bgcolor: '#1565c0' },
+                    bgcolor: '#111111', borderRadius: 2, textTransform: 'none', fontWeight: 700,
+                    '&:hover': { bgcolor: '#000000' },
                   }}
                 >
                   {p.status === 'funded' ? 'Fully Funded' : 'Invest Now'}
@@ -400,11 +400,11 @@ export default function InvestorDashboard() {
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={() => setInvestDialog(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
+            <Button onClick={() => setInvestDialog(false)} sx={{ textTransform: 'none', color: '#111111' }}>Cancel</Button>
             <Button
               variant="contained"
               onClick={handleProceedToCheckout}
-              sx={{ bgcolor: '#0a1940', borderRadius: 2, textTransform: 'none', fontWeight: 700, '&:hover': { bgcolor: '#1565c0' } }}
+              sx={{ bgcolor: '#111111', borderRadius: 2, textTransform: 'none', fontWeight: 700, '&:hover': { bgcolor: '#000000' } }}
             >
               Proceed to Payment
             </Button>
