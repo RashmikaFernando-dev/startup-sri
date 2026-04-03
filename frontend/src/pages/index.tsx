@@ -98,50 +98,15 @@ type ProjectCardItem = {
   status: string
 }
 
-const testimonials = [
-  {
-    quote: 'We reduced investor response time by almost 40% after moving our pipeline and outreach into StartupSri.',
-    name: 'Ravindu Fernando',
-    title: 'Founder, NovaStack',
-    avatar: 'S',
-    color: '#4f46e5',
-  },
-  {
-    quote: 'As an overseas investor, I finally have visibility into verified projects, milestones, and repayments in one place.',
-    name: 'Kamal Perera',
-    title: 'Angel Investor',
-    avatar: 'K',
-    color: '#2563eb',
-  },
-  {
-    quote: 'The workflow automation helped my team stay focused on product while investor communication ran continuously.',
-    name: 'Madushka Gunasekara',
-    title: 'Co-Founder, BuildFlow',
-    avatar: 'N',
-    color: '#0ea5e9',
-  },
-  {
-    quote: 'We launched our campaign in days, not weeks. The templates and AI guidance saved us from costly trial and error.',
-    name: 'Pasan Senanayake',
-    title: 'Founder, AgroPulse',
-    avatar: 'P',
-    color: '#7c3aed',
-  },
-  {
-    quote: 'The compliance checks gave our board confidence. Every update is traceable and every interaction is documented.',
-    name: 'Bhavindu De Silva',
-    title: 'Operations Lead',
-    avatar: 'B',
-    color: '#0891b2',
-  },
-  {
-    quote: 'Our close rate improved because the right investors saw the right data at the right moment, automatically.',
-    name: 'Dinuka Rodrigo',
-    title: 'CEO, Ventra Labs',
-    avatar: 'D',
-    color: '#4f46e5',
-  },
-]
+type FeedbackItem = {
+  id: string
+  quote: string
+  name: string
+  avatar: string
+  color: string
+}
+
+const feedbackColors = ['#4f46e5', '#2563eb', '#0ea5e9', '#7c3aed', '#0891b2', '#1d4ed8']
 
 const faqs = [
   {
@@ -172,6 +137,9 @@ export default function Home() {
   const displayFont = '"Poppins", "Segoe UI", sans-serif'
   const [featuredProjects, setFeaturedProjects] = useState<ProjectCardItem[]>([])
   const [projectsLoading, setProjectsLoading] = useState(true)
+  const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([])
+  const [feedbackLoading, setFeedbackLoading] = useState(true)
+  const [feedbackError, setFeedbackError] = useState('')
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -217,6 +185,40 @@ export default function Home() {
     }
 
     loadProjects()
+  }, [])
+
+  useEffect(() => {
+    const loadLatestFeedback = async () => {
+      setFeedbackLoading(true)
+      setFeedbackError('')
+
+      try {
+        const response = await api.get('/comments/latest')
+        const comments = Array.isArray(response.data?.data) ? response.data.data : []
+
+        const mapped: FeedbackItem[] = comments.map((comment: any, index: number) => {
+          const commenterName = String(comment.userName || 'Anonymous User').trim() || 'Anonymous User'
+          const avatarLetter = commenterName.charAt(0).toUpperCase() || 'A'
+
+          return {
+            id: String(comment._id),
+            quote: String(comment.text || ''),
+            name: commenterName,
+            avatar: avatarLetter,
+            color: feedbackColors[index % feedbackColors.length],
+          }
+        })
+
+        setFeedbackItems(mapped)
+      } catch (error) {
+        setFeedbackItems([])
+        setFeedbackError('Failed to load feedback. Please try again later.')
+      } finally {
+        setFeedbackLoading(false)
+      }
+    }
+
+    loadLatestFeedback()
   }, [])
 
   return (
@@ -623,8 +625,32 @@ export default function Home() {
             </Typography>
           </Box>
           <Grid container spacing={2}>
-            {testimonials.map((t) => (
-              <Grid item xs={12} sm={6} md={4} key={t.name}>
+            {feedbackLoading && (
+              <Grid item xs={12}>
+                <Typography variant="body2" sx={{ color: '#6b7280', textAlign: 'center' }}>
+                  Loading feedback...
+                </Typography>
+              </Grid>
+            )}
+
+            {!feedbackLoading && feedbackError && (
+              <Grid item xs={12}>
+                <Typography variant="body2" sx={{ color: '#6b7280', textAlign: 'center' }}>
+                  {feedbackError}
+                </Typography>
+              </Grid>
+            )}
+
+            {!feedbackLoading && !feedbackError && feedbackItems.length === 0 && (
+              <Grid item xs={12}>
+                <Typography variant="body2" sx={{ color: '#6b7280', textAlign: 'center' }}>
+                  No feedback available yet
+                </Typography>
+              </Grid>
+            )}
+
+            {!feedbackLoading && !feedbackError && feedbackItems.map((t) => (
+              <Grid item xs={12} sm={6} md={4} key={t.id}>
                 <Card
                   sx={{
                     height: '100%',
@@ -644,7 +670,6 @@ export default function Home() {
                       <Avatar sx={{ bgcolor: t.color, fontWeight: 700, width: 34, height: 34, fontSize: '0.88rem' }}>{t.avatar}</Avatar>
                       <Box>
                         <Typography variant="subtitle2" sx={{ fontWeight: 700, fontSize: '0.86rem', lineHeight: 1.2 }}>{t.name}</Typography>
-                        <Typography variant="caption" sx={{ color: '#6b7280' }}>{t.title}</Typography>
                       </Box>
                     </Box>
                   </CardContent>
