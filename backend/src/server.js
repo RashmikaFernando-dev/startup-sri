@@ -17,6 +17,7 @@ const investmentRoutes = require('./routes/investmentRoutes')
 const paymentRoutes = require('./routes/paymentRoutes')
 const adminRoutes = require('./routes/adminRoutes')
 const kycRoutes = require('./routes/kycRoutes')
+const commentRoutes = require('./routes/commentRoutes')
 const { errorHandler } = require('./middleware/errorHandler')
 
 const app = express()
@@ -60,6 +61,7 @@ app.use('/api/investments', investmentRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/kyc', kycRoutes)
+app.use('/api/comments', commentRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {

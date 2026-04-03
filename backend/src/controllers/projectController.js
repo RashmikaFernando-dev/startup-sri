@@ -1,6 +1,7 @@
 const Project = require('../models/Project')
 const User = require('../models/User')
 const KycVerification = require('../models/KycVerification')
+const Comment = require('../models/Comment')
 const { sendProjectApprovalEmail } = require('../utils/emailService')
 
 // @desc    Get all projects
@@ -135,8 +136,130 @@ const deleteProject = async (req, res, next) => {
       })
     }
 
+    await Comment.deleteMany({ project: project._id })
     await project.deleteOne()
     res.status(200).json({ success: true, data: {} })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// @desc    Get comments for a project
+// @route   GET /api/projects/:id/comments
+// @access  Public
+const getProjectComments = async (req, res, next) => {
+  try {
+    const project = await Project.findById(req.params.id)
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found',
+      })
+    }
+
+    const comments = await Comment.find({ project: req.params.id })
+      .populate('user', 'firstName lastName')
+      .sort({ createdAt: -1 })
+
+    res.status(200).json({
+      success: true,
+      count: comments.length,
+      data: comments,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// @desc    Add comment to a project
+// @route   POST /api/projects/:id/comments
+// @access  Private
+const addProjectComment = async (req, res, next) => {
+  try {
+    const project = await Project.findById(req.params.id)
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: 'Project not found',
+      })
+    }
+
+    const trimmedText = String(req.body.text || '').trim()
+
+    if (!trimmedText) {
+      return res.status(400).json({
+        success: false,
+        message: 'Comment cannot be empty',
+      })
+    }
+
+    const userName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'Anonymous User'
+
+    const comment = await Comment.create({
+      project: project._id,
+      user: req.user._id,
+      userName,
+      text: trimmedText,
+    })
+
+    const populatedComment = await Comment.findById(comment._id).populate(
+      'user',
+      'firstName lastName'
+    )
+
+    res.status(201).json({ success: true, data: populatedComment })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// @desc    Get latest public comments
+// @route   GET /api/comments/latest
+// @access  Public
+const getLatestComments = async (req, res, next) => {
+  try {
+    const comments = await Comment.aggregate([
+      {
+        $lookup: {
+          from: 'projects',
+          localField: 'project',
+          foreignField: '_id',
+          as: 'projectData',
+        },
+      },
+      {
+        $unwind: '$projectData',
+      },
+      {
+        $match: {
+          'projectData.status': { $in: ['approved', 'active', 'completed', 'funded'] },
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $limit: 6,
+      },
+      {
+        $project: {
+          _id: 1,
+          text: 1,
+          userName: 1,
+          user: 1,
+          project: 1,
+          createdAt: 1,
+        },
+      },
+    ])
+
+    res.status(200).json({
+      success: true,
+      count: comments.length,
+      data: comments,
+    })
   } catch (error) {
     next(error)
   }
@@ -190,4 +313,14 @@ const updateProjectStatus = async (req, res, next) => {
   }
 }
 
-module.exports = { getProjects, getProject, createProject, updateProject, deleteProject, updateProjectStatus }
+module.exports = {
+  getProjects,
+  getProject,
+  createProject,
+  updateProject,
+  deleteProject,
+  updateProjectStatus,
+  getProjectComments,
+  addProjectComment,
+  getLatestComments,
+}
