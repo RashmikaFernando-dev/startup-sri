@@ -3,17 +3,8 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import type { Project } from '@/redux/slices/projectSlice'
 import {
-  Box,
-  Typography,
-  Button,
-  TextField,
-  InputAdornment,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Alert,
-  Snackbar,
+  Box, Typography, Button, TextField, InputAdornment,
+  Select, MenuItem, FormControl, InputLabel, Alert, Snackbar, LinearProgress,
 } from '@mui/material'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
@@ -21,8 +12,17 @@ import SearchIcon from '@mui/icons-material/Search'
 import AdminNavbar from '@/components/admin/AdminNavbar'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
-import StatusChip from '@/components/ui/StatusChip'
-import FundingProgress from '@/components/ui/FundingProgress'
+
+const CONTENT_LEFT = 240
+
+const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  pending:   { bg: '#fef3c7', text: '#92400e', label: 'Pending' },
+  approved:  { bg: '#d1fae5', text: '#065f46', label: 'Approved' },
+  rejected:  { bg: '#fee2e2', text: '#991b1b', label: 'Rejected' },
+  active:    { bg: '#dbeafe', text: '#1e40af', label: 'Active' },
+  funded:    { bg: '#ede9fe', text: '#5b21b6', label: 'Funded' },
+  completed: { bg: '#f3f4f6', text: '#374151', label: 'Completed' },
+}
 
 export default function AdminProjects() {
   const router = useRouter()
@@ -82,9 +82,8 @@ export default function AdminProjects() {
     }
   }
 
-  const confirm = (title: string, body: string, onConfirm: () => void) => {
+  const confirm = (title: string, body: string, onConfirm: () => void) =>
     setConfirmDialog({ open: true, title, body, onConfirm })
-  }
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken')
@@ -105,86 +104,51 @@ export default function AdminProjects() {
     <>
       <Head><title>Projects – Admin | StartupSri</title></Head>
 
-      {/* ── Approval popup card ── */}
+      {/* Approval toast card */}
       {justApproved && (
         <Box sx={{
           position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 1400,
-          bgcolor: '#fff',
-          border: '1px solid #bbf7d0',
-          borderRadius: 3,
-          boxShadow: '0 8px 32px rgba(22,163,74,0.18)',
-          px: 3, py: 2.5,
-          display: 'flex', alignItems: 'center', gap: 2,
-          minWidth: 320,
-          animation: 'slideDown 0.3s cubic-bezier(0.34,1.56,0.64,1)',
-          '@keyframes slideDown': {
-            from: { opacity: 0, transform: 'translateX(-50%) translateY(-16px) scale(0.95)' },
-            to:   { opacity: 1, transform: 'translateX(-50%) translateY(0)    scale(1)' },
-          },
+          zIndex: 1400, bgcolor: '#fff', border: '1px solid #bbf7d0', borderRadius: 2.5,
+          boxShadow: '0 8px 32px rgba(22,163,74,0.18)', px: 3, py: 2.5,
+          display: 'flex', alignItems: 'center', gap: 2, minWidth: 320,
         }}>
-          <Box sx={{
-            width: 44, height: 44, borderRadius: '50%', bgcolor: '#d1fae5', flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <CheckCircleIcon sx={{ fontSize: 26, color: '#16a34a' }} />
+          <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CheckCircleIcon sx={{ fontSize: 24, color: '#16a34a' }} />
           </Box>
           <Box>
-            <Typography variant="body1" sx={{ fontWeight: 800, color: '#0a1940', lineHeight: 1.3 }}>Approved!</Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.4 }}>&#8220;{justApproved.title}&#8221; is now live for investors.</Typography>
+            <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: 14 }}>Approved!</Typography>
+            <Typography sx={{ fontSize: 12, color: '#6b7280' }}>"{justApproved.title}" is now live for investors.</Typography>
           </Box>
         </Box>
       )}
 
-      <Box sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(95deg, #101224 0%, #22274a 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
+      <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f9fafb' }}>
+        <AdminSidebar activeKey="projects" />
 
-        <AdminNavbar admin={admin} onLogout={handleLogout} />
+        <Box sx={{ flex: 1, ml: { xs: 0, md: `${CONTENT_LEFT}px` }, display: 'flex', flexDirection: 'column' }}>
+          <AdminNavbar
+            admin={admin}
+            onLogout={handleLogout}
+            pageTitle="Projects"
+            pageSubtitle="Review, approve or reject startup listings"
+          />
 
-        {/* Body */}
-        <Box sx={{
-          flex: 1,
-          display: 'flex',
-          maxWidth: '100%',
-          mx: 0,
-          width: '100%',
-          px: 0,
-          py: { xs: 3, md: 4 },
-          gap: 2,
-          bgcolor: { xs: 'transparent', md: '#0d1329' },
-          borderRadius: 0,
-          boxShadow: { xs: 'none', md: '0 20px 40px rgba(7, 12, 22, 0.22)' },
-        }}>
-
-          <AdminSidebar activeKey="projects" />
-
-          {/* Main Content */}
-          <Box sx={{
-            flex: 1,
-            minWidth: 0,
-            bgcolor: '#d5dae3',
-            borderRadius: 0,
-            p: { xs: 0, md: 3 },
-          }}>
-
-            <Typography variant="h5" sx={{ fontWeight: 800, color: '#0a1940', mb: 1 }}>All Projects</Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>Review, approve or reject startup listings</Typography>
+          <Box sx={{ flex: 1, px: { xs: 2, md: 4 }, pt: '80px', pb: 6 }}>
 
             {/* Filters */}
-            <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-              <TextField size="small" placeholder="Search by title or email..."
-                value={search} onChange={e => setSearch(e.target.value)}
-                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
-                sx={{ flex: 1, minWidth: 220 }}
+            <Box sx={{ display: 'flex', gap: 2, mt: 3, mb: 3, flexWrap: 'wrap' }}>
+              <TextField
+                size="small"
+                placeholder="Search by title or email…"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: '#9ca3af' }} /></InputAdornment> }}
+                sx={{ flex: 1, minWidth: 220, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
               />
               <FormControl size="small" sx={{ minWidth: 160 }}>
                 <InputLabel>Status</InputLabel>
-                <Select value={statusFilter} label="Status" onChange={e => setStatusFilter(e.target.value)}>
-                  <MenuItem value="all">All</MenuItem>
+                <Select value={statusFilter} label="Status" onChange={e => setStatusFilter(e.target.value)} sx={{ borderRadius: 2, bgcolor: '#fff' }}>
+                  <MenuItem value="all">All Statuses</MenuItem>
                   {['pending', 'approved', 'rejected', 'funded', 'active', 'completed'].map(s => (
                     <MenuItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</MenuItem>
                   ))}
@@ -192,68 +156,107 @@ export default function AdminProjects() {
               </FormControl>
             </Box>
 
-            {loading ? <Box sx={{ py: 4, textAlign: 'center', color: '#9ca3af' }}>Loading...</Box>
-              : filteredProjects.length === 0 ? (
-                <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 3, p: 5, textAlign: 'center' }}>
-                  <Typography color="text.secondary">No projects found.</Typography>
+            {/* Table */}
+            <Box sx={{ bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              {/* Table header */}
+              <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
+                <Box component="thead">
+                  <Box component="tr" sx={{ bgcolor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                    {['Project', 'Category', 'Type', 'Goal', 'Progress', 'Status', 'Actions'].map(h => (
+                      <Box component="th" key={h} sx={{ px: 3, py: 1.8, textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                        {h}
+                      </Box>
+                    ))}
+                  </Box>
                 </Box>
-              ) : filteredProjects.map(p => (
-                <Box key={p._id} sx={{
-                  bgcolor: '#fff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 3, p: 3, mb: 2,
-                  position: 'relative', overflow: 'hidden',
-                  '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.07)' },
-                  transition: 'box-shadow 0.2s',
-                }}>
 
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Box>
-                        <Typography variant="body1" sx={{ fontWeight: 800, color: '#0a1940' }}>{p.title}</Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          by {p.entrepreneur?.firstName} {p.entrepreneur?.lastName} · {p.entrepreneur?.email}
-                        </Typography>
+                <Box component="tbody">
+                  {loading ? (
+                    <Box component="tr">
+                      <Box component="td" colSpan={7} sx={{ px: 3, py: 6, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
+                        Loading projects…
                       </Box>
                     </Box>
-                    <StatusChip status={p.status} />
-                  </Box>
-
-                  <Box sx={{ display: 'flex', gap: 3, mb: 2, flexWrap: 'wrap' }}>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 700 }}>Goal</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{fmt(p.fundingGoal)}</Typography>
+                  ) : filteredProjects.length === 0 ? (
+                    <Box component="tr">
+                      <Box component="td" colSpan={7} sx={{ px: 3, py: 6, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
+                        No projects found.
+                      </Box>
                     </Box>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 700 }}>Raised</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700, color: '#059669' }}>{fmt(p.currentFunding)}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 700 }}>Type</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700, textTransform: 'capitalize' }}>{p.fundingType}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 700 }}>Category</Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{p.category}</Typography>
-                    </Box>
-                  </Box>
-
-                  <Box sx={{ mb: 2 }}>
-                    <FundingProgress currentFunding={p.currentFunding} fundingGoal={p.fundingGoal} />
-                  </Box>
-
-                  {p.status === 'pending' && (
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button size="small" variant="contained" color="success" startIcon={<CheckCircleIcon />}
-                        onClick={() => confirm('Approve Project', `Approve "${p.title}"?`, () => updateProjectStatus(p._id, 'approved'))}
-                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}>Approve</Button>
-                      <Button size="small" variant="outlined" color="error" startIcon={<CancelIcon />}
-                        onClick={() => confirm('Reject Project', `Reject "${p.title}"?`, () => updateProjectStatus(p._id, 'rejected'))}
-                        sx={{ borderRadius: 2, textTransform: 'none' }}>Reject</Button>
-                    </Box>
-                  )}
+                  ) : filteredProjects.map((p, idx, arr) => {
+                    const progress = Math.min(Math.round(((p.currentFunding || 0) / p.fundingGoal) * 100), 100)
+                    const sc = STATUS_COLORS[p.status] ?? { bg: '#f3f4f6', text: '#374151', label: p.status }
+                    return (
+                      <Box component="tr" key={p._id} sx={{
+                        borderBottom: idx < arr.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        '&:hover': { bgcolor: '#fafafa' },
+                        transition: 'background 0.12s',
+                      }}>
+                        <Box component="td" sx={{ px: 3, py: 2.5, minWidth: 180 }}>
+                          <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{p.title}</Typography>
+                          <Typography sx={{ fontSize: 12, color: '#9ca3af' }}>{p.entrepreneur?.firstName} {p.entrepreneur?.lastName}</Typography>
+                          <Typography sx={{ fontSize: 11, color: '#d1d5db' }}>{p.entrepreneur?.email}</Typography>
+                        </Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5, fontSize: 13, color: '#374151' }}>{p.category}</Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5, fontSize: 13, color: '#374151', textTransform: 'capitalize' }}>{p.fundingType}</Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5, fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>
+                          {fmt(p.fundingGoal)}
+                        </Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5, minWidth: 130 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={progress}
+                              sx={{ flex: 1, height: 5, borderRadius: 3, bgcolor: '#f3f4f6', '& .MuiLinearProgress-bar': { bgcolor: '#111827' } }}
+                            />
+                            <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#6b7280', minWidth: 32 }}>{progress}%</Typography>
+                          </Box>
+                          <Typography sx={{ fontSize: 11, color: '#9ca3af', mt: 0.5 }}>{fmt(p.currentFunding || 0)} raised</Typography>
+                        </Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5 }}>
+                          <Box sx={{ display: 'inline-flex', bgcolor: sc.bg, color: sc.text, fontSize: 12, fontWeight: 700, px: 1.5, py: 0.4, borderRadius: 10 }}>
+                            {sc.label}
+                          </Box>
+                        </Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5 }}>
+                          {p.status === 'pending' ? (
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+                                onClick={() => confirm('Approve Project', `Approve "${p.title}"?`, () => updateProjectStatus(p._id, 'approved'))}
+                                sx={{ bgcolor: '#111827', borderRadius: 1.5, textTransform: 'none', fontWeight: 700, fontSize: 12, '&:hover': { bgcolor: '#1f2937' } }}
+                              >
+                                Approve
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<CancelIcon sx={{ fontSize: 14 }} />}
+                                onClick={() => confirm('Reject Project', `Reject "${p.title}"?`, () => updateProjectStatus(p._id, 'rejected'))}
+                                sx={{ borderRadius: 1.5, textTransform: 'none', fontSize: 12, borderColor: '#e5e7eb', color: '#ef4444', '&:hover': { borderColor: '#ef4444', bgcolor: '#fef2f2' } }}
+                              >
+                                Reject
+                              </Button>
+                            </Box>
+                          ) : (
+                            <Typography sx={{ fontSize: 12, color: '#d1d5db' }}>—</Typography>
+                          )}
+                        </Box>
+                      </Box>
+                    )
+                  })}
                 </Box>
-              ))}
+              </Box>
+            </Box>
+
+            {/* Count label */}
+            {!loading && (
+              <Typography sx={{ mt: 2, fontSize: 13, color: '#9ca3af' }}>
+                Showing {filteredProjects.length} of {projects.length} projects
+              </Typography>
+            )}
           </Box>
         </Box>
       </Box>
@@ -266,7 +269,6 @@ export default function AdminProjects() {
         onClose={() => setConfirmDialog(d => ({ ...d, open: false }))}
       />
 
-      {/* Toast */}
       <Snackbar open={toast.open} autoHideDuration={3500} onClose={() => setToast(t => ({ ...t, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
         <Alert severity={toast.type} variant="filled" sx={{ width: '100%' }}>{toast.msg}</Alert>
       </Snackbar>

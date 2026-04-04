@@ -2,12 +2,18 @@ import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import type { Project } from '@/redux/slices/projectSlice'
-import { Box, Typography, Button, Alert, Snackbar } from '@mui/material'
+import { Box, Typography, Button, Alert, Snackbar, LinearProgress, Chip } from '@mui/material'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty'
+import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt'
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import AdminNavbar from '@/components/admin/AdminNavbar'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+
+const CONTENT_LEFT = 240
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -56,9 +62,8 @@ export default function AdminDashboard() {
     }
   }
 
-  const confirm = (title: string, body: string, onConfirm: () => void) => {
+  const confirm = (title: string, body: string, onConfirm: () => void) =>
     setConfirmDialog({ open: true, title, body, onConfirm })
-  }
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken')
@@ -68,96 +73,223 @@ export default function AdminDashboard() {
 
   const fmt = (n: number) => `LKR ${n.toLocaleString()}`
 
-  // Stats
   const totalProjects = projects.length
   const pendingProjects = projects.filter(p => p.status === 'pending').length
-  const approvedProjects = projects.filter(p => p.status === 'approved').length
-  const totalFunding = projects.reduce((s, p) => s + p.currentFunding, 0)
+  const approvedProjects = projects.filter(p => p.status === 'approved' || p.status === 'active').length
+  const totalFunding = projects.reduce((s, p) => s + (p.currentFunding || 0), 0)
+
+  const statCards = [
+    {
+      label: 'Total Projects',
+      value: totalProjects,
+      icon: <RocketLaunchIcon sx={{ fontSize: 22, color: '#6366f1' }} />,
+      iconBg: '#ede9fe',
+    },
+    {
+      label: 'Pending Review',
+      value: pendingProjects,
+      icon: <HourglassEmptyIcon sx={{ fontSize: 22, color: '#f59e0b' }} />,
+      iconBg: '#fef3c7',
+    },
+    {
+      label: 'Approved',
+      value: approvedProjects,
+      icon: <ThumbUpAltIcon sx={{ fontSize: 22, color: '#10b981' }} />,
+      iconBg: '#d1fae5',
+    },
+    {
+      label: 'Total Raised',
+      value: fmt(totalFunding),
+      icon: <AccountBalanceWalletIcon sx={{ fontSize: 22, color: '#3b82f6' }} />,
+      iconBg: '#dbeafe',
+    },
+  ]
+
+  const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+    pending:   { bg: '#fef3c7', text: '#92400e', label: 'Pending' },
+    approved:  { bg: '#d1fae5', text: '#065f46', label: 'Approved' },
+    rejected:  { bg: '#fee2e2', text: '#991b1b', label: 'Rejected' },
+    active:    { bg: '#dbeafe', text: '#1e40af', label: 'Active' },
+    funded:    { bg: '#ede9fe', text: '#5b21b6', label: 'Funded' },
+    completed: { bg: '#f3f4f6', text: '#374151', label: 'Completed' },
+  }
 
   return (
     <>
-      <Head><title>Admin Dashboard – StartupSri</title></Head>
+      <Head><title>Dashboard – Admin | StartupSri</title></Head>
 
-      <Box sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(95deg, #101224 0%, #22274a 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
+      <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f9fafb' }}>
+        <AdminSidebar activeKey="overview" />
 
-        <AdminNavbar admin={admin} onLogout={handleLogout} />
+        <Box sx={{ flex: 1, ml: { xs: 0, md: `${CONTENT_LEFT}px` }, display: 'flex', flexDirection: 'column' }}>
+          <AdminNavbar
+            admin={admin}
+            onLogout={handleLogout}
+            pageTitle="Dashboard"
+            pageSubtitle={`Welcome back, ${admin?.firstName ?? 'Admin'}. Here's what's happening.`}
+          />
 
-        {/* Body */}
-        <Box sx={{
-          flex: 1,
-          display: 'flex',
-          maxWidth: '100%',
-          mx: 0,
-          width: '100%',
-          px: 0,
-          py: { xs: 3, md: 4 },
-          gap: 2,
-          bgcolor: { xs: 'transparent', md: '#0d1329' },
-          borderRadius: 0,
-          boxShadow: { xs: 'none', md: '0 20px 40px rgba(7, 12, 22, 0.22)' },
-        }}>
+          {/* Page content */}
+          <Box sx={{ flex: 1, px: { xs: 2, md: 4 }, pt: '80px', pb: 6 }}>
 
-          <AdminSidebar activeKey="overview" />
-
-          {/* Main */}
-          <Box sx={{
-            flex: 1,
-            minWidth: 0,
-            bgcolor: '#d5dae3',
-            borderRadius: 0,
-            p: { xs: 0, md: 3 },
-          }}>
-
-            {/* ── OVERVIEW ── */}
-            <Box>
-                <Typography variant="h5" sx={{ fontWeight: 800, color: '#0a1940', mb: 1 }}>Overview</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>Platform summary at a glance</Typography>
-
-                {/* Stat cards */}
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 2, mb: 4 }}>
-                  {[
-                    { label: 'Total Projects', value: totalProjects, color: '#dbeafe', text: '#1d4ed8' },
-                    { label: 'Pending Review', value: pendingProjects, color: '#fef3c7', text: '#d97706' },
-                    { label: 'Approved', value: approvedProjects, color: '#d1fae5', text: '#065f46' },
-                    { label: 'Total Raised', value: fmt(totalFunding), color: '#ede9fe', text: '#7c3aed' },
-                  ].map(stat => (
-                    <Box key={stat.label} sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 3, p: 3 }}>
-                      <Typography variant="caption" sx={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#6b7280' }}>{stat.label}</Typography>
-                      <Typography variant="h4" sx={{ fontWeight: 800, color: stat.text, mt: 0.5 }}>{stat.value}</Typography>
+            {/* Stat cards */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 2.5, mb: 4, mt: 3 }}>
+              {statCards.map(card => (
+                <Box key={card.label} sx={{
+                  bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb',
+                  p: 3, display: 'flex', flexDirection: 'column', gap: 1.5,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography sx={{ fontSize: 13, color: '#6b7280', fontWeight: 600 }}>{card.label}</Typography>
+                    <Box sx={{ width: 38, height: 38, borderRadius: 2, bgcolor: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {card.icon}
                     </Box>
-                  ))}
-                </Box>
-
-                {/* Recent pending projects */}
-                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1940', mb: 2 }}>Pending Approvals</Typography>
-                {projects.filter(p => p.status === 'pending').length === 0 ? (
-                  <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 3, p: 4, textAlign: 'center' }}>
-                    <CheckCircleIcon sx={{ fontSize: 40, color: '#d1fae5', mb: 1 }} />
-                    <Typography color="text.secondary">No pending projects — all caught up!</Typography>
                   </Box>
-                ) : (
-                  projects.filter(p => p.status === 'pending').slice(0, 5).map(p => (
-                    <Box key={p._id} sx={{ bgcolor: '#fff', border: '1px solid #fef3c7', borderRadius: 3, p: 3, mb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-                      <Box>
-                        <Typography variant="body1" sx={{ fontWeight: 700, color: '#0a1940' }}>{p.title}</Typography>
-                        <Typography variant="caption" color="text.secondary">{p.entrepreneur?.email} · {p.category} · {fmt(p.fundingGoal)}</Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button size="small" variant="contained" color="success" startIcon={<CheckCircleIcon />}
-                          onClick={() => confirm('Approve Project', `Approve "${p.title}"?`, () => updateProjectStatus(p._id, 'approved'))}
-                          sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}>Approve</Button>
-                        <Button size="small" variant="outlined" color="error" startIcon={<CancelIcon />}
-                          onClick={() => confirm('Reject Project', `Reject "${p.title}"?`, () => updateProjectStatus(p._id, 'rejected'))}
-                          sx={{ borderRadius: 2, textTransform: 'none' }}>Reject</Button>
-                      </Box>
-                    </Box>
-                  ))
+                  <Typography sx={{ fontSize: 28, fontWeight: 800, color: '#111827', lineHeight: 1 }}>{card.value}</Typography>
+                </Box>
+              ))}
+            </Box>
+
+            {/* Pending Approvals */}
+            <Box sx={{ bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              <Box sx={{ px: 3, py: 2.5, borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>Pending Approvals</Typography>
+                  <Typography sx={{ fontSize: 13, color: '#9ca3af', mt: 0.3 }}>Projects awaiting your review</Typography>
+                </Box>
+                {pendingProjects > 0 && (
+                  <Box sx={{ bgcolor: '#fef3c7', color: '#92400e', fontWeight: 700, fontSize: 12, px: 1.5, py: 0.4, borderRadius: 10 }}>
+                    {pendingProjects} pending
+                  </Box>
                 )}
+              </Box>
+
+              {projects.filter(p => p.status === 'pending').length === 0 ? (
+                <Box sx={{ py: 6, textAlign: 'center', color: '#9ca3af' }}>
+                  <CheckCircleIcon sx={{ fontSize: 40, color: '#d1fae5', mb: 1, display: 'block', mx: 'auto' }} />
+                  <Typography sx={{ fontSize: 14 }}>No pending projects — all caught up!</Typography>
+                </Box>
+              ) : (
+                <Box>
+                  {projects.filter(p => p.status === 'pending').slice(0, 6).map((p, idx, arr) => {
+                    const progress = Math.min(Math.round(((p.currentFunding || 0) / p.fundingGoal) * 100), 100)
+                    return (
+                      <Box key={p._id} sx={{
+                        px: 3, py: 2.5,
+                        borderBottom: idx < arr.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        flexWrap: 'wrap', gap: 2,
+                        '&:hover': { bgcolor: '#fafafa' },
+                        transition: 'background 0.15s',
+                      }}>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+                            <Typography sx={{ fontWeight: 700, color: '#111827', fontSize: 14 }}>{p.title}</Typography>
+                            <Box sx={{
+                              bgcolor: STATUS_COLORS[p.status]?.bg,
+                              color: STATUS_COLORS[p.status]?.text,
+                              fontSize: 11, fontWeight: 700, px: 1.2, py: 0.3, borderRadius: 10,
+                            }}>
+                              {STATUS_COLORS[p.status]?.label}
+                            </Box>
+                          </Box>
+                          <Typography sx={{ fontSize: 12, color: '#9ca3af', mb: 1 }}>
+                            {p.entrepreneur?.email} · {p.category} · Goal: {fmt(p.fundingGoal)}
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={progress}
+                              sx={{ flex: 1, height: 5, borderRadius: 3, bgcolor: '#f3f4f6', '& .MuiLinearProgress-bar': { bgcolor: '#111827' } }}
+                            />
+                            <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#6b7280', minWidth: 36 }}>{progress}%</Typography>
+                          </Box>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<CheckCircleIcon sx={{ fontSize: 15 }} />}
+                            onClick={() => confirm('Approve Project', `Approve "${p.title}"?`, () => updateProjectStatus(p._id, 'approved'))}
+                            sx={{ bgcolor: '#111827', borderRadius: 1.5, textTransform: 'none', fontWeight: 700, fontSize: 13, '&:hover': { bgcolor: '#1f2937' } }}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<CancelIcon sx={{ fontSize: 15 }} />}
+                            onClick={() => confirm('Reject Project', `Reject "${p.title}"?`, () => updateProjectStatus(p._id, 'rejected'))}
+                            sx={{ borderRadius: 1.5, textTransform: 'none', borderColor: '#e5e7eb', color: '#ef4444', '&:hover': { borderColor: '#ef4444', bgcolor: '#fef2f2' } }}
+                          >
+                            Reject
+                          </Button>
+                        </Box>
+                      </Box>
+                    )
+                  })}
+                </Box>
+              )}
+            </Box>
+
+            {/* Recent Projects summary */}
+            <Box sx={{ bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', mt: 3 }}>
+              <Box sx={{ px: 3, py: 2.5, borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>All Projects</Typography>
+                <Button
+                  size="small"
+                  onClick={() => router.push('/admin/projects')}
+                  sx={{ textTransform: 'none', fontSize: 13, color: '#6b7280', '&:hover': { color: '#111827' } }}
+                >
+                  View all →
+                </Button>
+              </Box>
+              <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
+                <Box component="thead">
+                  <Box component="tr" sx={{ bgcolor: '#f9fafb' }}>
+                    {['Project', 'Category', 'Funding Type', 'Progress', 'Status'].map(h => (
+                      <Box component="th" key={h} sx={{ px: 3, py: 1.5, textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {h}
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+                <Box component="tbody">
+                  {projects.slice(0, 5).map((p, idx, arr) => {
+                    const progress = Math.min(Math.round(((p.currentFunding || 0) / p.fundingGoal) * 100), 100)
+                    const sc = STATUS_COLORS[p.status] ?? { bg: '#f3f4f6', text: '#374151', label: p.status }
+                    return (
+                      <Box component="tr" key={p._id} sx={{
+                        borderBottom: idx < arr.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        '&:hover': { bgcolor: '#fafafa' },
+                      }}>
+                        <Box component="td" sx={{ px: 3, py: 2 }}>
+                          <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{p.title}</Typography>
+                          <Typography sx={{ fontSize: 12, color: '#9ca3af' }}>{p.entrepreneur?.email}</Typography>
+                        </Box>
+                        <Box component="td" sx={{ px: 3, py: 2, fontSize: 13, color: '#374151' }}>{p.category}</Box>
+                        <Box component="td" sx={{ px: 3, py: 2, fontSize: 13, color: '#374151', textTransform: 'capitalize' }}>{p.fundingType}</Box>
+                        <Box component="td" sx={{ px: 3, py: 2, minWidth: 120 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <LinearProgress
+                              variant="determinate"
+                              value={progress}
+                              sx={{ flex: 1, height: 5, borderRadius: 3, bgcolor: '#f3f4f6', '& .MuiLinearProgress-bar': { bgcolor: '#111827' } }}
+                            />
+                            <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#6b7280' }}>{progress}%</Typography>
+                          </Box>
+                        </Box>
+                        <Box component="td" sx={{ px: 3, py: 2 }}>
+                          <Box sx={{ display: 'inline-flex', bgcolor: sc.bg, color: sc.text, fontSize: 12, fontWeight: 700, px: 1.5, py: 0.4, borderRadius: 10 }}>
+                            {sc.label}
+                          </Box>
+                        </Box>
+                      </Box>
+                    )
+                  })}
+                </Box>
+              </Box>
             </Box>
 
           </Box>
@@ -172,7 +304,6 @@ export default function AdminDashboard() {
         onClose={() => setConfirmDialog(d => ({ ...d, open: false }))}
       />
 
-      {/* Toast */}
       <Snackbar open={toast.open} autoHideDuration={3500} onClose={() => setToast(t => ({ ...t, open: false }))} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
         <Alert severity={toast.type} variant="filled" sx={{ width: '100%' }}>{toast.msg}</Alert>
       </Snackbar>

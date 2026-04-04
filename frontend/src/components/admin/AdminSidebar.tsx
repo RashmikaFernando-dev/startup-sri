@@ -1,17 +1,28 @@
-import { Box, Typography, Button } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { useRouter } from 'next/router'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import PeopleIcon from '@mui/icons-material/People'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 
 export type AdminActiveKey = 'overview' | 'projects' | 'users' | 'kyc'
 
-const sidebarItems = [
-  { key: 'overview' as AdminActiveKey, label: 'Overview', icon: <DashboardIcon fontSize="small" />, href: '/admin/dashboard' },
-  { key: 'projects' as AdminActiveKey, label: 'Projects', icon: <RocketLaunchIcon fontSize="small" />, href: '/admin/projects' },
-  { key: 'users' as AdminActiveKey, label: 'Users', icon: <PeopleIcon fontSize="small" />, href: '/admin/users' },
-  { key: 'kyc' as AdminActiveKey, label: 'KYC Review', icon: <VerifiedUserIcon fontSize="small" />, href: '/admin/verifications' },
+const navSections = [
+  {
+    title: 'OVERVIEW',
+    items: [
+      { key: 'overview' as AdminActiveKey, label: 'Dashboard', icon: <DashboardIcon sx={{ fontSize: 18 }} />, href: '/admin/dashboard' },
+    ],
+  },
+  {
+    title: 'MANAGEMENT',
+    items: [
+      { key: 'projects' as AdminActiveKey, label: 'Projects', icon: <RocketLaunchIcon sx={{ fontSize: 18 }} />, href: '/admin/projects' },
+      { key: 'users' as AdminActiveKey, label: 'Users', icon: <PeopleIcon sx={{ fontSize: 18 }} />, href: '/admin/users' },
+      { key: 'kyc' as AdminActiveKey, label: 'KYC Review', icon: <VerifiedUserIcon sx={{ fontSize: 18 }} />, href: '/admin/verifications' },
+    ],
+  },
 ]
 
 interface AdminSidebarProps {
@@ -22,66 +33,74 @@ export default function AdminSidebar({ activeKey }: AdminSidebarProps) {
   const router = useRouter()
 
   return (
-    <>
-      {/* Desktop sidebar */}
-      <Box sx={{
-        width: 230, flexShrink: 0,
-        bgcolor: '#0d1329', borderRadius: 0,
-        p: 2.2,
-        display: { xs: 'none', md: 'block' },
-      }}>
-        <Typography variant="body2" sx={{ color: '#ffffff', fontWeight: 700, px: 1, mb: 0.2 }}>
-          Admin Console
-        </Typography>
-        <Typography variant="caption" sx={{ color: '#7e889a', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.9, px: 1 }}>
-          Navigation
-        </Typography>
-        <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-          {sidebarItems.map(item => (
-            <Box
-              key={item.key}
-              onClick={() => router.push(item.href)}
-              sx={{
-                display: 'flex', alignItems: 'center', gap: 1.5,
-                px: 2, py: 1.2, borderRadius: 2, cursor: 'pointer',
-                bgcolor: item.key === activeKey ? 'rgba(255,255,255,0.14)' : 'transparent',
-                color: item.key === activeKey ? '#ffffff' : '#9ca3af',
-                fontWeight: item.key === activeKey ? 700 : 400,
-                fontSize: '0.875rem',
-                transition: 'all 0.15s',
-                '&:hover': { bgcolor: item.key === activeKey ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)' },
-              }}
-            >
-              {item.icon}{item.label}
-            </Box>
-          ))}
+    <Box sx={{
+      width: 240,
+      flexShrink: 0,
+      bgcolor: '#fff',
+      borderRight: '1px solid #e5e7eb',
+      display: { xs: 'none', md: 'flex' },
+      flexDirection: 'column',
+      minHeight: '100vh',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      zIndex: 100,
+    }}>
+      {/* Brand */}
+      <Box sx={{ px: 3, py: 2.5, borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box sx={{
+          width: 32, height: 32, borderRadius: 1.5,
+          bgcolor: '#111827',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <AdminPanelSettingsIcon sx={{ color: '#fff', fontSize: 18 }} />
+        </Box>
+        <Box>
+          <Typography sx={{ fontWeight: 800, fontSize: 14, color: '#111827', lineHeight: 1.2 }}>StartupSri</Typography>
+          <Typography sx={{ fontSize: 11, color: '#9ca3af', fontWeight: 500 }}>Admin Console</Typography>
         </Box>
       </Box>
 
-      {/* Mobile tab strip */}
-      <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 1, mb: 2 }}>
-        {sidebarItems.map(item => (
-          <Button
-            key={item.key}
-            size="small"
-            variant={item.key === activeKey ? 'contained' : 'outlined'}
-            onClick={() => router.push(item.href)}
-            sx={{
-              borderRadius: 2, textTransform: 'none',
-              bgcolor: item.key === activeKey ? '#111111' : undefined,
-              color: item.key === activeKey ? '#ffffff' : '#111111',
-              borderColor: '#111111',
-              '&:hover': {
-                bgcolor: item.key === activeKey ? '#000000' : 'rgba(0,0,0,0.04)',
-                borderColor: '#000000',
-              },
-            }}
-            startIcon={item.icon}
-          >
-            {item.label}
-          </Button>
+      {/* Nav */}
+      <Box sx={{ flex: 1, px: 2, py: 2, overflowY: 'auto' }}>
+        {navSections.map(section => (
+          <Box key={section.title} sx={{ mb: 3 }}>
+            <Typography sx={{
+              fontSize: 11, fontWeight: 700, color: '#9ca3af',
+              letterSpacing: '0.07em', px: 1, mb: 1,
+            }}>
+              {section.title}
+            </Typography>
+            {section.items.map(item => {
+              const isActive = item.key === activeKey
+              return (
+                <Box
+                  key={item.key}
+                  onClick={() => router.push(item.href)}
+                  sx={{
+                    display: 'flex', alignItems: 'center', gap: 1.5,
+                    px: 1.5, py: 1.1, borderRadius: 1.5, cursor: 'pointer', mb: 0.5,
+                    bgcolor: isActive ? '#f3f4f6' : 'transparent',
+                    color: isActive ? '#111827' : '#6b7280',
+                    fontWeight: isActive ? 700 : 500,
+                    fontSize: 14,
+                    transition: 'all 0.15s',
+                    '&:hover': { bgcolor: '#f9fafb', color: '#111827' },
+                  }}
+                >
+                  <Box sx={{ color: isActive ? '#111827' : '#9ca3af', display: 'flex', alignItems: 'center' }}>
+                    {item.icon}
+                  </Box>
+                  {item.label}
+                  {isActive && (
+                    <Box sx={{ ml: 'auto', width: 6, height: 6, borderRadius: '50%', bgcolor: '#111827' }} />
+                  )}
+                </Box>
+              )
+            })}
+          </Box>
         ))}
       </Box>
-    </>
+    </Box>
   )
 }

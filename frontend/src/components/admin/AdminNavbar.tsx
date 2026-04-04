@@ -1,45 +1,61 @@
 import { Box, Typography, Avatar, IconButton, Tooltip } from '@mui/material'
 import LogoutIcon from '@mui/icons-material/Logout'
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 
 interface AdminNavbarProps {
   admin: { firstName?: string; lastName?: string } | null
   onLogout: () => void
+  pageTitle?: string
+  pageSubtitle?: string
 }
 
-export default function AdminNavbar({ admin, onLogout }: AdminNavbarProps) {
+export default function AdminNavbar({ admin, onLogout, pageTitle, pageSubtitle }: AdminNavbarProps) {
+  const initials = `${admin?.firstName?.[0] ?? ''}${admin?.lastName?.[0] ?? ''}`
+
   return (
     <Box sx={{
-      background: 'linear-gradient(95deg, #101224 0%, #22274a 100%)',
-      borderBottom: '1px solid rgba(255,255,255,0.08)',
-      px: { xs: 2, md: 4 }, py: 1.5,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      height: 64,
+      bgcolor: '#fff',
+      borderBottom: '1px solid #e5e7eb',
+      px: { xs: 2, md: 4 },
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      position: 'fixed',
+      top: 0,
+      left: { xs: 0, md: 240 },
+      right: 0,
+      zIndex: 99,
     }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box sx={{
-          width: 32, height: 32, borderRadius: '50%',
-          bgcolor: 'rgba(255,255,255,0.12)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <AdminPanelSettingsIcon sx={{ color: '#fff', fontSize: 18 }} />
-        </Box>
-        <Typography variant="h6" sx={{ fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
-          StartupSri{' '}
-          <Typography component="span" variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontWeight: 500, ml: 0.5 }}>
-            Admin
+      {/* Left – page heading */}
+      <Box>
+        {pageTitle && (
+          <Typography sx={{ fontWeight: 800, fontSize: 20, color: '#111827', lineHeight: 1.2 }}>
+            {pageTitle}
           </Typography>
-        </Typography>
+        )}
+        {pageSubtitle && (
+          <Typography sx={{ fontSize: 13, color: '#6b7280', mt: 0.2 }}>
+            {pageSubtitle}
+          </Typography>
+        )}
       </Box>
 
+      {/* Right – user info */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 34, height: 34, fontSize: 13, fontWeight: 700, color: '#fff' }}>
-          {admin?.firstName?.[0]}{admin?.lastName?.[0]}
+        <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
+            {admin?.firstName} {admin?.lastName}
+          </Typography>
+          <Typography sx={{ fontSize: 12, color: '#9ca3af' }}>Admin</Typography>
+        </Box>
+        <Avatar sx={{
+          bgcolor: '#111827', width: 36, height: 36,
+          fontSize: 13, fontWeight: 700, color: '#fff',
+        }}>
+          {initials}
         </Avatar>
-        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)', display: { xs: 'none', sm: 'block' } }}>
-          {admin?.firstName} {admin?.lastName}
-        </Typography>
         <Tooltip title="Logout">
-          <IconButton size="small" onClick={onLogout} sx={{ color: 'rgba(255,255,255,0.6)', '&:hover': { color: '#fff' } }}>
+          <IconButton size="small" onClick={onLogout} sx={{ color: '#9ca3af', '&:hover': { color: '#111827' } }}>
             <LogoutIcon fontSize="small" />
           </IconButton>
         </Tooltip>
