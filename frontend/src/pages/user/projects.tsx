@@ -44,6 +44,7 @@ import SearchIcon from '@mui/icons-material/Search'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import Footer from '../../components/layout/Footer'
 import UserNavbar from '@/components/user/UserNavbar'
+import InvestorSidebar from '@/components/user/InvestorSidebar'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -591,7 +592,11 @@ export default function InvestorDashboard() {
         <UserNavbar user={user} profileImage={profileImage} onLogout={handleLogout} />
 
         {/* Body */}
-        <Box sx={{ flex: 1, maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4 }}>
+        <Box sx={{ flex: 1, maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, display: 'flex', gap: 3 }}>
+
+          <InvestorSidebar active="projects" />
+
+          <Box sx={{ flex: 1, minWidth: 0 }}>
 
           {/* Header */}
           <Box sx={{ mb: 4 }}>
@@ -711,6 +716,7 @@ export default function InvestorDashboard() {
               ))}
             </Grid>
           )}
+          </Box>
         </Box>
 
         <Footer />

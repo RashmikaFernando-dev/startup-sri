@@ -27,19 +27,9 @@ import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
-import ListAltIcon from '@mui/icons-material/ListAlt'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
-import PersonIcon from '@mui/icons-material/Person'
-import SettingsIcon from '@mui/icons-material/Settings'
 import UserNavbar from '@/components/user/UserNavbar'
-
-// Sidebar items 
-const sidebarItems = [
-  { key: 'apply', label: 'Apply to raise', icon: <RocketLaunchIcon fontSize="small" /> },
-  { key: 'listings', label: 'My Listings', icon: <ListAltIcon fontSize="small" /> },
-  { key: 'profile', label: 'Profile', icon: <PersonIcon fontSize="small" /> },
-  { key: 'settings', label: 'Settings', icon: <SettingsIcon fontSize="small" /> },
-]
+import EntrepreneurSidebar from '@/components/user/EntrepreneurSidebar'
 
 const STATUS_COLOR: Record<string, 'default' | 'warning' | 'success' | 'error' | 'info' | 'primary'> = {
   pending: 'warning',
@@ -160,71 +150,10 @@ export default function Dashboard() {
         {/* ── Body ── */}
         <Box sx={{ flex: 1, display: 'flex', maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, gap: 3 }}>
 
-          {/* ── Sidebar ── */}
-          <Box sx={{
-            width: 200, flexShrink: 0,
-            bgcolor: '#fff', borderRadius: 3, border: '1px solid #e5e7eb',
-            p: 2, height: 'fit-content',
-            display: { xs: 'none', md: 'block' },
-          }}>
-            <Typography variant="caption" sx={{ color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, px: 1 }}>
-              Categories
-            </Typography>
-            <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-              {sidebarItems.map(item => (
-                <Box
-                  key={item.key}
-                  onClick={() => handleSidebarClick(item.key)}
-                  sx={{
-                    display: 'flex', alignItems: 'center', gap: 1.5,
-                    px: 2, py: 1.2, borderRadius: 2, cursor: 'pointer',
-                    bgcolor: activeTab === item.key ? '#111111' : 'transparent',
-                    color: activeTab === item.key ? '#fff' : '#374151',
-                    fontWeight: activeTab === item.key ? 700 : 400,
-                    fontSize: '0.875rem',
-                    transition: 'all 0.15s',
-                    '&:hover': {
-                      bgcolor: activeTab === item.key ? '#000000' : '#f3f4f6',
-                    },
-                  }}
-                >
-                  {item.icon}
-                  {item.label}
-                </Box>
-              ))}
-            </Box>
-          </Box>
+          <EntrepreneurSidebar active={activeTab} onItemClick={handleSidebarClick} />
 
           {/* ── Main Content ── */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-
-            {/* Mobile tab bar */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' }, gap: 1, mb: 2, flexWrap: 'nowrap', overflowX: 'auto', pb: 0.5 }}>
-              {sidebarItems.map(item => (
-                <Button
-                  key={item.key}
-                  size="small"
-                  variant={activeTab === item.key ? 'contained' : 'outlined'}
-                  onClick={() => handleSidebarClick(item.key)}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    bgcolor: activeTab === item.key ? '#111111' : undefined,
-                    color: activeTab === item.key ? '#ffffff' : '#111111',
-                    borderColor: '#111111',
-                    '&:hover': {
-                      bgcolor: activeTab === item.key ? '#000000' : 'rgba(0,0,0,0.04)',
-                      borderColor: '#000000',
-                    },
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                  }}
-                  startIcon={item.icon}
-                >
-                  {item.label}
-                </Button>
-              ))}
-            </Box>
 
             {/* ── MY LISTINGS tab ── */}
             {activeTab === 'listings' && (
