@@ -14,10 +14,12 @@ import {
   Alert,
   Snackbar,
   LinearProgress,
+  CircularProgress,
 } from '@mui/material'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import UserNavbar from '@/components/user/UserNavbar'
 
 const CATEGORIES = ['Software', 'Hardware', 'SaaS', 'Mobile App', 'Web Platform', 'AI/ML', 'Other']
@@ -40,6 +42,7 @@ export default function SubmitProject() {
   const [submitted, setSubmitted] = useState(false)
   const [toast, setToast] = useState<{ open: boolean; msg: string; type: 'success' | 'error' }>({ open: false, msg: '', type: 'success' })
   const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [kycStatus, setKycStatus] = useState<'loading' | 'approved' | 'pending' | 'rejected' | 'not_submitted'>('loading')
 
   const [form, setForm] = useState({
     title: '',
@@ -62,6 +65,15 @@ export default function SubmitProject() {
     setUser(parsed)
     const img = localStorage.getItem(`profileImage_${parsed.id}`)
     if (img) setProfileImage(img)
+
+    // Check KYC status
+    fetch('http://localhost:5000/api/kyc/my', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) setKycStatus(data.data.status)
+        else setKycStatus('not_submitted')
+      })
+      .catch(() => setKycStatus('not_submitted'))
   }, [])
 
   const set = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }))
@@ -159,7 +171,7 @@ export default function SubmitProject() {
               <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
                 <Button variant="contained"
                   onClick={() => router.push('/user/dashboard')}
-                  sx={{ bgcolor: '#0a1940', borderRadius: 2, textTransform: 'none', fontWeight: 700, px: 4 }}>
+                  sx={{ bgcolor: '#111111', '&:hover': { bgcolor: '#000000' }, borderRadius: 2, textTransform: 'none', fontWeight: 700, px: 4 }}>
                   Go to Dashboard
                 </Button>
                 <Button variant="outlined"
@@ -183,6 +195,51 @@ export default function SubmitProject() {
 
         <Box sx={{ flex: 1, maxWidth: 720, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 5 }}>
 
+          {/* KYC gate */}
+          {kycStatus === 'loading' && (
+            <Box display="flex" justifyContent="center" py={8}><CircularProgress /></Box>
+          )}
+          {kycStatus === 'not_submitted' && (
+            <Box textAlign="center" py={8}>
+              <VerifiedUserIcon sx={{ fontSize: 64, color: '#9ca3af', mb: 2 }} />
+              <Typography variant="h5" fontWeight={700} mb={1}>KYC Verification Required</Typography>
+              <Typography color="text.secondary" mb={3}>
+                You must complete identity verification before submitting a project.
+              </Typography>
+              <Button variant="contained" onClick={() => router.push('/user/verifications')}
+                sx={{ bgcolor: '#0a1940', '&:hover': { bgcolor: '#000000' }, borderRadius: 2, textTransform: 'none', fontWeight: 700, px: 4 }}>
+                Start KYC Verification
+              </Button>
+            </Box>
+          )}
+          {kycStatus === 'pending' && (
+            <Box textAlign="center" py={8}>
+              <VerifiedUserIcon sx={{ fontSize: 64, color: '#f59e0b', mb: 2 }} />
+              <Typography variant="h5" fontWeight={700} mb={1}>KYC Under Review</Typography>
+              <Typography color="text.secondary" mb={3}>
+                Your documents are pending admin review. You will be able to submit projects once approved.
+              </Typography>
+              <Button variant="outlined" onClick={() => router.push('/user/verifications')} sx={{ borderRadius: 2, textTransform: 'none' }}>
+                View KYC Status
+              </Button>
+            </Box>
+          )}
+          {kycStatus === 'rejected' && (
+            <Box textAlign="center" py={8}>
+              <VerifiedUserIcon sx={{ fontSize: 64, color: '#ef4444', mb: 2 }} />
+              <Typography variant="h5" fontWeight={700} mb={1}>KYC Rejected</Typography>
+              <Typography color="text.secondary" mb={3}>
+                Your KYC was not approved. Please resubmit your documents.
+              </Typography>
+              <Button variant="contained" color="error" onClick={() => router.push('/user/verifications')} sx={{ borderRadius: 2, textTransform: 'none', px: 4 }}>
+                Resubmit KYC
+              </Button>
+            </Box>
+          )}
+
+          {/* Only show form if KYC approved */}
+          {kycStatus === 'approved' && (
+          <>
           {/* Page header */}
           <Box sx={{ mb: 4 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
@@ -360,12 +417,12 @@ export default function SubmitProject() {
 
               {step < STEPS.length - 1 ? (
                 <Button variant="contained" onClick={handleNext}
-                  sx={{ bgcolor: '#0a1940', borderRadius: 2, textTransform: 'none', fontWeight: 700, px: 4 }}>
+                  sx={{ bgcolor: '#111111', '&:hover': { bgcolor: '#000000' }, borderRadius: 2, textTransform: 'none', fontWeight: 700, px: 4 }}>
                   Next Step
                 </Button>
               ) : (
                 <Button variant="contained" onClick={handleSubmit} disabled={loading}
-                  sx={{ bgcolor: '#0a1940', borderRadius: 2, textTransform: 'none', fontWeight: 700, px: 4 }}>
+                  sx={{ bgcolor: '#111111', '&:hover': { bgcolor: '#000000' }, borderRadius: 2, textTransform: 'none', fontWeight: 700, px: 4 }}>
                   {loading ? 'Submitting...' : 'Submit Listing'}
                 </Button>
               )}
@@ -373,6 +430,8 @@ export default function SubmitProject() {
           </Box>
 
           {loading && <LinearProgress sx={{ mt: 2, borderRadius: 1 }} />}
+          </>
+          )}
         </Box>
       </Box>
 

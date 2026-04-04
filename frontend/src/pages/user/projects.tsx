@@ -32,11 +32,12 @@ import {
   InputLabel,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn'
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import GroupIcon from '@mui/icons-material/Group'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
 import PieChartIcon from '@mui/icons-material/PieChart'
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
+import PrintIcon from '@mui/icons-material/Print'
 import EmailIcon from '@mui/icons-material/Email'
 import PhoneIcon from '@mui/icons-material/Phone'
 import SearchIcon from '@mui/icons-material/Search'
@@ -45,6 +46,21 @@ import Footer from '../../components/layout/Footer'
 import UserNavbar from '@/components/user/UserNavbar'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+type CommentItem = {
+  _id: string
+  project: string
+  user?: {
+    _id?: string
+    firstName?: string
+    lastName?: string
+  }
+  userName?: string
+  text: string
+  createdAt: string
+}
 
 const STATUS_COLOR: Record<string, any> = {
   pending: 'warning', approved: 'success', rejected: 'error',
@@ -71,6 +87,10 @@ export default function InvestorDashboard() {
   const [activeTab, setActiveTab] = useState(0)
   const [investDialog, setInvestDialog] = useState(false)
   const [investAmount, setInvestAmount] = useState('')
+  const [comments, setComments] = useState<CommentItem[]>([])
+  const [commentsLoading, setCommentsLoading] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [submittingComment, setSubmittingComment] = useState(false)
   const [toast, setToast] = useState<{ open: boolean; msg: string; type: 'success' | 'error' }>({ open: false, msg: '', type: 'success' })
   const [profileImage, setProfileImage] = useState<string | null>(null)
 
@@ -92,6 +112,16 @@ export default function InvestorDashboard() {
   useEffect(() => {
     fetchProjects()
   }, [])
+
+  useEffect(() => {
+    if (!selectedProject?._id) {
+      setComments([])
+      setCommentText('')
+      return
+    }
+
+    fetchProjectComments(selectedProject._id)
+  }, [selectedProject?._id])
 
   const fetchProjects = async () => {
     setLoading(true)
@@ -115,29 +145,89 @@ export default function InvestorDashboard() {
     }
   }
 
-  const handleInvest = async () => {
+  const fetchProjectComments = async (projectId: string) => {
+    setCommentsLoading(true)
+    try {
+      const res = await fetch(`${API_BASE_URL}/projects/${projectId}/comments`)
+      const data = await res.json()
+
+      if (data.success) {
+        setComments(Array.isArray(data.data) ? data.data : [])
+      } else {
+        setComments([])
+      }
+    } catch (err) {
+      setComments([])
+    } finally {
+      setCommentsLoading(false)
+    }
+  }
+
+  const handleSubmitComment = async () => {
+    if (!selectedProject?._id) return
+
+    const trimmed = commentText.trim()
+    if (!trimmed) {
+      setToast({ open: true, msg: 'Comment cannot be empty.', type: 'error' })
+      return
+    }
+
+    setSubmittingComment(true)
+    try {
+      const authToken = token || localStorage.getItem('token')
+      if (!authToken) {
+        setToast({ open: true, msg: 'Please log in to add a comment.', type: 'error' })
+        return
+      }
+
+      const res = await fetch(`${API_BASE_URL}/projects/${selectedProject._id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ text: trimmed }),
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || data.error || 'Failed to add comment')
+      }
+
+      setCommentText('')
+      await fetchProjectComments(selectedProject._id)
+      setToast({ open: true, msg: 'Comment added successfully.', type: 'success' })
+    } catch (err: any) {
+      setToast({ open: true, msg: err.message || 'Failed to add comment.', type: 'error' })
+    } finally {
+      setSubmittingComment(false)
+    }
+  }
+
+  const handleProceedToCheckout = () => {
     if (!selectedProject || !investAmount) return
     const amount = parseFloat(investAmount)
     if (isNaN(amount) || amount <= 0) {
       setToast({ open: true, msg: 'Please enter a valid amount.', type: 'error' })
       return
     }
-    try {
-      const authToken = token || localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/investments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ projectId: selectedProject._id, amount }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Investment failed')
-      setToast({ open: true, msg: `Successfully invested LKR ${amount.toLocaleString()}!`, type: 'success' })
-      setInvestDialog(false)
-      setInvestAmount('')
-      fetchProjects()
-    } catch (e: any) {
-      setToast({ open: true, msg: e.message || 'Investment failed.', type: 'error' })
-    }
+    const p = selectedProject
+    router.push({
+      pathname: '/user/checkout',
+      query: {
+        projectId: p._id,
+        projectTitle: p.title,
+        amount: amount.toString(),
+        fundingType: p.fundingType,
+        ...(p.fundingType === 'microloan' && {
+          interestRate: p.interestRate?.toString(),
+          duration: p.duration?.toString(),
+        }),
+        ...(p.fundingType === 'equity' && {
+          equityOffered: p.equityOffered?.toString(),
+        }),
+      },
+    })
   }
 
   const handleLogout = () => {
@@ -145,6 +235,13 @@ export default function InvestorDashboard() {
     localStorage.removeItem('user')
     dispatch(logout())
     router.push('/')
+  }
+
+  const handlePrint = (url: string) => {
+    const w = window.open(url)
+    if (w) {
+      setTimeout(() => w.print(), 1000)
+    }
   }
 
   const fmt = (n: number) => `LKR ${n.toLocaleString()}`
@@ -177,7 +274,7 @@ export default function InvestorDashboard() {
             <Button
               startIcon={<ArrowBackIcon />}
               onClick={() => { setSelectedProject(null); setActiveTab(0) }}
-              sx={{ textTransform: 'none', color: '#374151', fontWeight: 600, borderRadius: 2, mb: 2 }}
+              sx={{ textTransform: 'none', color: '#111111', fontWeight: 600, borderRadius: 2, mb: 2 }}
             >
               Back to Projects
             </Button>
@@ -207,6 +304,7 @@ export default function InvestorDashboard() {
                   <Tab label="Overview" sx={{ textTransform: 'none', fontWeight: 600 }} />
                   <Tab label="Details" sx={{ textTransform: 'none', fontWeight: 600 }} />
                   <Tab label="Documents" sx={{ textTransform: 'none', fontWeight: 600 }} />
+                  <Tab label="Comments" sx={{ textTransform: 'none', fontWeight: 600 }} />
                 </Tabs>
 
                 <Box sx={{ p: 3 }}>
@@ -258,33 +356,36 @@ export default function InvestorDashboard() {
                   {activeTab === 1 && (
                     <Box>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, color: '#0a1940' }}>Funding Details</Typography>
-                      <Grid container spacing={2} sx={{ mb: 4 }}>
-                        {[
-                          { label: 'Funding Type', value: p.fundingType === 'equity' ? 'Equity' : 'Microloan' },
-                          { label: 'Funding Goal', value: fmt(p.fundingGoal) },
-                          { label: 'Amount Raised', value: fmt(p.currentFunding || 0) },
-                          ...(p.fundingType === 'equity' ? [{ label: 'Equity Offered', value: `${p.equityOffered}%` }] : []),
-                          ...(p.fundingType === 'microloan' ? [
-                            { label: 'Interest Rate', value: `${p.interestRate}% p.a.` },
-                            { label: 'Duration', value: `${p.duration} months` },
-                          ] : []),
-                          { label: 'Category', value: p.category },
-                          { label: 'Status', value: p.status.charAt(0).toUpperCase() + p.status.slice(1) },
-                          { label: 'Listed', value: new Date(p.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) },
-                        ].map(item => (
-                          <Grid item xs={6} sm={4} key={item.label}>
-                            <Box sx={{ bgcolor: '#f9fafb', borderRadius: 2, p: 2 }}>
-                              <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5 }}>
-                                {item.label}
-                              </Typography>
-                              <Typography variant="body1" sx={{ fontWeight: 700, color: '#0a1940', mt: 0.3 }}>
-                                {item.value}
-                              </Typography>
-                            </Box>
-                          </Grid>
-                        ))}
-                      </Grid>
-
+                      <Box sx={{ border: '1px solid #e5e7eb', borderRadius: 2, overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ background: '#f9fafb' }}>
+                              <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, fontSize: 12, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb', width: '40%' }}>Field</th>
+                              <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700, fontSize: 12, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e5e7eb' }}>Value</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              { label: 'Funding Type', value: p.fundingType === 'equity' ? 'Equity' : 'Microloan' },
+                              { label: 'Funding Goal', value: fmt(p.fundingGoal) },
+                              { label: 'Amount Raised', value: fmt(p.currentFunding || 0) },
+                              ...(p.fundingType === 'equity' ? [{ label: 'Equity Offered', value: `${p.equityOffered}%` }] : []),
+                              ...(p.fundingType === 'microloan' ? [
+                                { label: 'Interest Rate', value: `${p.interestRate}% p.a.` },
+                                { label: 'Duration', value: `${p.duration} months` },
+                              ] : []),
+                              { label: 'Category', value: p.category },
+                              { label: 'Status', value: p.status.charAt(0).toUpperCase() + p.status.slice(1) },
+                              { label: 'Listed', value: new Date(p.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) },
+                            ].map((item, idx, arr) => (
+                              <tr key={item.label} style={{ background: idx % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                                <td style={{ padding: '12px 16px', fontSize: 14, color: '#6b7280', fontWeight: 600, borderBottom: idx < arr.length - 1 ? '1px solid #e5e7eb' : 'none' }}>{item.label}</td>
+                                <td style={{ padding: '12px 16px', fontSize: 14, color: '#0a1940', fontWeight: 700, borderBottom: idx < arr.length - 1 ? '1px solid #e5e7eb' : 'none' }}>{item.value}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </Box>
                     </Box>
                   )}
 
@@ -305,9 +406,72 @@ export default function InvestorDashboard() {
                                 <InsertDriveFileIcon sx={{ color: '#1d4ed8' }} />
                                 <Typography variant="body2" sx={{ fontWeight: 600 }}>Business Plan</Typography>
                               </Box>
-                              <Button size="small" variant="outlined" href={p.documents.businessPlan} target="_blank" sx={{ textTransform: 'none', borderRadius: 2 }}>View</Button>
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button size="small" variant="outlined" href={p.documents.businessPlan} target="_blank" sx={{ textTransform: 'none', borderRadius: 2, color: '#111111', borderColor: '#111111', '&:hover': { borderColor: '#000000', bgcolor: 'rgba(0,0,0,0.04)' } }}>View</Button>
+                                <Button size="small" variant="outlined" startIcon={<PrintIcon />} onClick={() => handlePrint(p.documents!.businessPlan!)} sx={{ textTransform: 'none', borderRadius: 2, color: '#111111', borderColor: '#111111', '&:hover': { borderColor: '#000000', bgcolor: 'rgba(0,0,0,0.04)' } }}>Print</Button>
+                              </Box>
                             </Box>
                           )}
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+
+                  {/* ── Comments tab ── */}
+                  {activeTab === 3 && (
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, color: '#0a1940' }}>
+                        Comments
+                      </Typography>
+
+                      <Box sx={{ p: 2, border: '1px solid #e5e7eb', borderRadius: 2, mb: 2.5, bgcolor: '#fafafa' }}>
+                        <TextField
+                          fullWidth
+                          multiline
+                          minRows={3}
+                          placeholder="Write your comment..."
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
+                        />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" color="text.secondary">
+                            {commentText.trim().length} characters
+                          </Typography>
+                          <Button
+                            variant="contained"
+                            onClick={handleSubmitComment}
+                            disabled={submittingComment}
+                            sx={{ bgcolor: '#111111', textTransform: 'none', fontWeight: 700, borderRadius: 2, '&:hover': { bgcolor: '#000000' } }}
+                          >
+                            {submittingComment ? 'Posting...' : 'Post Comment'}
+                          </Button>
+                        </Box>
+                      </Box>
+
+                      {commentsLoading ? (
+                        <Typography variant="body2" color="text.secondary">Loading comments...</Typography>
+                      ) : comments.length === 0 ? (
+                        <Box sx={{ textAlign: 'center', py: 4, border: '1px dashed #d1d5db', borderRadius: 2 }}>
+                          <Typography variant="body2" color="text.secondary">No comments yet. Be the first to comment.</Typography>
+                        </Box>
+                      ) : (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                          {comments.map((comment) => (
+                            <Box key={comment._id} sx={{ p: 2, border: '1px solid #e5e7eb', borderRadius: 2, bgcolor: '#fff' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#0a1940' }}>
+                                  {comment.userName || `${comment.user?.firstName || ''} ${comment.user?.lastName || ''}`.trim() || 'Anonymous User'}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {new Date(comment.createdAt).toLocaleString()}
+                                </Typography>
+                              </Box>
+                              <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                                {comment.text}
+                              </Typography>
+                            </Box>
+                          ))}
                         </Box>
                       )}
                     </Box>
@@ -339,7 +503,7 @@ export default function InvestorDashboard() {
                 {/* Stats */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
                   {[
-                    { icon: <MonetizationOnIcon sx={{ fontSize: 18, color: '#6b7280' }} />, label: 'Goal', value: fmt(p.fundingGoal) },
+                    { icon: <AccountBalanceIcon sx={{ fontSize: 18, color: '#6b7280' }} />, label: 'Goal', value: fmt(p.fundingGoal) },
                     { icon: <GroupIcon sx={{ fontSize: 18, color: '#6b7280' }} />, label: 'Investors', value: p.investors?.length ? `${p.investors.length}` : 'N/A' },
                     { icon: <CalendarTodayIcon sx={{ fontSize: 18, color: '#6b7280' }} />, label: 'Days left', value: p.duration ? `${p.duration} months` : 'N/A' },
                     ...(p.fundingType === 'equity'
@@ -363,8 +527,8 @@ export default function InvestorDashboard() {
                   onClick={() => setInvestDialog(true)}
                   disabled={p.status === 'funded' || p.status === 'completed'}
                   sx={{
-                    bgcolor: '#0a1940', borderRadius: 2, textTransform: 'none', fontWeight: 700,
-                    '&:hover': { bgcolor: '#1565c0' },
+                    bgcolor: '#111111', borderRadius: 2, textTransform: 'none', fontWeight: 700,
+                    '&:hover': { bgcolor: '#000000' },
                   }}
                 >
                   {p.status === 'funded' ? 'Fully Funded' : 'Invest Now'}
@@ -391,7 +555,7 @@ export default function InvestorDashboard() {
             <TextField
               fullWidth
               type="number"
-              placeholder="e.g. 50000"
+              placeholder="e.g. 10000"
               value={investAmount}
               onChange={e => setInvestAmount(e.target.value)}
               InputProps={{ startAdornment: <InputAdornment position="start">LKR</InputAdornment> }}
@@ -399,13 +563,13 @@ export default function InvestorDashboard() {
             />
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 2 }}>
-            <Button onClick={() => setInvestDialog(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
+            <Button onClick={() => setInvestDialog(false)} sx={{ textTransform: 'none', color: '#111111' }}>Cancel</Button>
             <Button
               variant="contained"
-              onClick={handleInvest}
-              sx={{ bgcolor: '#0a1940', borderRadius: 2, textTransform: 'none', fontWeight: 700, '&:hover': { bgcolor: '#1565c0' } }}
+              onClick={handleProceedToCheckout}
+              sx={{ bgcolor: '#111111', borderRadius: 2, textTransform: 'none', fontWeight: 700, '&:hover': { bgcolor: '#000000' } }}
             >
-              Confirm Investment
+              Proceed to Payment
             </Button>
           </DialogActions>
         </Dialog>

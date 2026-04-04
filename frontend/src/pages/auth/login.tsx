@@ -15,9 +15,11 @@ import {
   IconButton,
   InputAdornment,
   Snackbar,
+  Fade,
 } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import HomeIcon from '@mui/icons-material/Home'
 import Tooltip from '@mui/material/Tooltip'
 import { useFormik } from 'formik'
@@ -274,9 +276,9 @@ export default function Login() {
                   textTransform: 'none',
                   fontSize: '1rem',
                   borderRadius: 2,
-                  bgcolor: '#0a1940',
+                  bgcolor: '#111111',
                   boxShadow: 'none',
-                  '&:hover': { bgcolor: '#1565c0', boxShadow: '0 4px 16px rgba(21,101,192,0.35)' },
+                  '&:hover': { bgcolor: '#000000', boxShadow: '0 4px 16px rgba(0,0,0,0.35)' },
                   transition: 'all 0.2s',
                 }}
               >
@@ -317,10 +319,44 @@ export default function Login() {
         open={success}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
         autoHideDuration={3000}
+        TransitionComponent={Fade}
+        sx={{ top: { xs: 16, sm: 24 } }}
       >
-        <Alert severity="success" variant="filled" sx={{ width: '100%', fontSize: '1rem' }}>
-          Login successful! Redirecting...
-        </Alert>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.5,
+            px: 2.8,
+            py: 1.6,
+            borderRadius: '16px',
+            minWidth: 300,
+            // glassmorphism
+            background: 'rgba(220, 255, 235, 0.25)',
+            backdropFilter: 'blur(18px)',
+            WebkitBackdropFilter: 'blur(18px)',
+            border: '1px solid rgba(16, 185, 129, 0.35)',
+          }}
+        >
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: 'rgba(16, 185, 129, 0.2)',
+              border: '1px solid rgba(16, 185, 129, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <CheckCircleOutlineIcon sx={{ color: '#059669', fontSize: 18 }} />
+          </Box>
+          <Typography sx={{ fontWeight: 700, fontSize: '0.88rem', color: '#064e3b', letterSpacing: '0.01em' }}>
+            Login successful! Redirecting…
+          </Typography>
+        </Box>
       </Snackbar>
     </>
   )

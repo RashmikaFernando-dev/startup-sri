@@ -21,6 +21,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications'
 import SecurityIcon from '@mui/icons-material/Security'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import LogoutIcon from '@mui/icons-material/Logout'
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import UserNavbar from '@/components/user/UserNavbar'
 
 const tabs = [
@@ -159,7 +160,7 @@ export default function ProfilePage() {
                         size="small" variant="contained"
                         startIcon={<CameraAltIcon />}
                         onClick={() => fileInputRef.current?.click()}
-                        sx={{ bgcolor: '#0a1940', borderRadius: 2, textTransform: 'none', fontWeight: 700, fontSize: 12 }}
+                        sx={{ bgcolor: '#111111', '&:hover': { bgcolor: '#000000' }, borderRadius: 2, textTransform: 'none', fontWeight: 700, fontSize: 12 }}
                       >
                         {profileImage ? 'Change Photo' : 'Upload Photo'}
                       </Button>
@@ -189,8 +190,19 @@ export default function ProfilePage() {
                   <TextField label="Email Address" value={user?.email || ''} size="small" InputProps={{ readOnly: true }} fullWidth sx={{ gridColumn: { sm: '1 / -1' } }} />
                   <Box sx={{ gridColumn: { sm: '1 / -1' } }}>
                     <Typography variant="caption" sx={{ fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>Account Role</Typography>
-                    <Box sx={{ mt: 1 }}>
+                    <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Chip label={user?.role} size="small" sx={{ bgcolor: '#dbeafe', color: '#1d4ed8', fontWeight: 700, textTransform: 'capitalize' }} />
+                      {user?.role === 'entrepreneur' && (
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<VerifiedUserIcon fontSize="small" />}
+                          onClick={() => router.push('/user/verifications')}
+                          sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.75rem' }}
+                        >
+                          Verify
+                        </Button>
+                      )}
                     </Box>
                   </Box>
                 </Box>

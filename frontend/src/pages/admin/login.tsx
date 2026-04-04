@@ -14,6 +14,7 @@ import {
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import Footer from '@/components/layout/Footer'
 
 export default function AdminLogin() {
   const router = useRouter()
@@ -65,11 +66,17 @@ export default function AdminLogin() {
         <title>Admin Portal – StartupSri</title>
       </Head>
 
-      <Box sx={{ minHeight: '100vh', bgcolor: '#f3f4f6', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(95deg, #101224 0%, #22274a 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
 
         {/* Top bar */}
         <Box sx={{
-          bgcolor: '#fff', borderBottom: '1px solid #e5e7eb',
+          background: 'linear-gradient(95deg, #101224 0%, #22274a 100%)',
+          borderBottom: '1px solid rgba(255,255,255,0.12)',
           px: { xs: 3, md: 6 }, py: 1.8,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
@@ -82,7 +89,7 @@ export default function AdminLogin() {
               sx={{ width: 30, height: 30, objectFit: 'contain' }}
               onError={(e: any) => { e.target.style.display = 'none' }}
             />
-            <Typography variant="h6" sx={{ fontWeight: 800, color: '#0a1940', letterSpacing: '-0.02em' }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>
               StartupSri
             </Typography>
           </Box>
@@ -92,7 +99,8 @@ export default function AdminLogin() {
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', px: 2, py: 6 }}>
           <Paper elevation={0} sx={{
             width: '100%', maxWidth: 420,
-            border: '1px solid #e5e7eb', borderRadius: 3, p: { xs: 3, sm: 4 },
+            bgcolor: '#eef1f7',
+            border: '1px solid rgba(255,255,255,0.22)', borderRadius: 3, p: { xs: 3, sm: 4 },
           }}>
             {/* Icon + Title */}
             <Box sx={{ textAlign: 'center', mb: 3 }}>
@@ -165,9 +173,9 @@ export default function AdminLogin() {
                   variant="contained"
                   disabled={loading}
                   sx={{
-                    mt: 1, py: 1.3, bgcolor: '#0a1940', borderRadius: 2,
+                      mt: 1, py: 1.3, bgcolor: '#111111', borderRadius: 2,
                     fontWeight: 700, fontSize: '0.95rem', textTransform: 'none',
-                    '&:hover': { bgcolor: '#162d6e' },
+                      '&:hover': { bgcolor: '#000000' },
                   }}
                 >
                   {loading ? 'Signing in...' : 'Sign In'}
@@ -177,45 +185,7 @@ export default function AdminLogin() {
           </Paper>
         </Box>
 
-        {/* Footer */}
-        <Box sx={{ bgcolor: '#fff', borderTop: '1px solid #e5e7eb' }}>
-          <Box sx={{ maxWidth: 1100, mx: 'auto', px: { xs: 2, md: 4 }, py: 6, display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'space-between' }}>
-            <Box sx={{ maxWidth: 240 }}>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: '#0a1940', mb: 1 }}>StartupSri</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Connecting visionary startups with strategic investors to build the future together.
-              </Typography>
-            </Box>
-            {[
-              { title: 'Platform', links: ['How It Works', 'Features', 'Pricing', 'Success Stories'] },
-              { title: 'Company', links: ['About Us', 'Careers', 'Blog', 'Press'] },
-              { title: 'Resources', links: ['Help Center', 'Community', 'Investor Guide', 'Startup Guide'] },
-            ].map(col => (
-              <Box key={col.title}>
-                <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: '#374151' }}>
-                  {col.title}
-                </Typography>
-                <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                  {col.links.map(link => (
-                    <Typography key={link} variant="body2" color="text.secondary" sx={{ cursor: 'pointer', '&:hover': { color: '#0a1940' } }}>
-                      {link}
-                    </Typography>
-                  ))}
-                </Box>
-              </Box>
-            ))}
-          </Box>
-          <Box sx={{ borderTop: '1px solid #e5e7eb', py: 2, px: { xs: 2, md: 4 }, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-            <Typography variant="caption" color="text.disabled">© 2026 StartupSri. All rights reserved.</Typography>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              {['Terms', 'Privacy', 'Cookies', 'Security', 'Accessibility'].map(item => (
-                <Typography key={item} variant="caption" color="text.disabled" sx={{ cursor: 'pointer', '&:hover': { color: '#0a1940' } }}>
-                  {item}
-                </Typography>
-              ))}
-            </Box>
-          </Box>
-        </Box>
+        <Footer />
       </Box>
     </>
   )

@@ -41,7 +41,7 @@ export default function UserNavbar({ user, profileImage, onLogout, onBack, backL
             StartupSri
           </Typography>
           {backLabel && (
-            <Chip label={backLabel} size="small" sx={{ bgcolor: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }} />
+            <Chip label={backLabel} size="small" sx={{ bgcolor: 'rgba(127,104,255,0.18)', color: '#6e57ef', fontWeight: 700 }} />
           )}
         </Box>
       ) : (

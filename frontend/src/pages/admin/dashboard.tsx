@@ -78,17 +78,40 @@ export default function AdminDashboard() {
     <>
       <Head><title>Admin Dashboard – StartupSri</title></Head>
 
-      <Box sx={{ minHeight: '100vh', bgcolor: '#f7f8fa', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(95deg, #101224 0%, #22274a 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
 
         <AdminNavbar admin={admin} onLogout={handleLogout} />
 
         {/* Body */}
-        <Box sx={{ flex: 1, display: 'flex', maxWidth: 1200, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, gap: 3 }}>
+        <Box sx={{
+          flex: 1,
+          display: 'flex',
+          maxWidth: '100%',
+          mx: 0,
+          width: '100%',
+          px: 0,
+          py: { xs: 3, md: 4 },
+          gap: 2,
+          bgcolor: { xs: 'transparent', md: '#0d1329' },
+          borderRadius: 0,
+          boxShadow: { xs: 'none', md: '0 20px 40px rgba(7, 12, 22, 0.22)' },
+        }}>
 
           <AdminSidebar activeKey="overview" />
 
           {/* Main */}
-          <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box sx={{
+            flex: 1,
+            minWidth: 0,
+            bgcolor: '#d5dae3',
+            borderRadius: 0,
+            p: { xs: 0, md: 3 },
+          }}>
 
             {/* ── OVERVIEW ── */}
             <Box>

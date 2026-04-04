@@ -10,14 +10,15 @@ interface AdminNavbarProps {
 export default function AdminNavbar({ admin, onLogout }: AdminNavbarProps) {
   return (
     <Box sx={{
-      bgcolor: '#0a1940',
+      background: 'linear-gradient(95deg, #101224 0%, #22274a 100%)',
+      borderBottom: '1px solid rgba(255,255,255,0.08)',
       px: { xs: 2, md: 4 }, py: 1.5,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
         <Box sx={{
           width: 32, height: 32, borderRadius: '50%',
-          bgcolor: 'rgba(255,255,255,0.15)',
+          bgcolor: 'rgba(255,255,255,0.12)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <AdminPanelSettingsIcon sx={{ color: '#fff', fontSize: 18 }} />
