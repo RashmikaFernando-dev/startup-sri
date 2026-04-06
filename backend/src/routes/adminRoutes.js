@@ -1,5 +1,6 @@
 const express = require('express')
 const User = require('../models/User')
+const Investment = require('../models/Investment')
 const {
   getProjects,
   getProject,
@@ -45,5 +46,24 @@ router.put('/projects/:id', updateProject)
 router.delete('/projects/:id', deleteProject)
 
 router.put('/projects/:id/status', updateProjectStatus)
+
+// GET /api/admin/transactions — all investment transactions
+router.get('/transactions', async (req, res, next) => {
+  try {
+    const { type, status } = req.query
+    const filter = {}
+    if (type) filter.type = type
+    if (status) filter.status = status
+
+    const transactions = await Investment.find(filter)
+      .populate('investor', 'firstName lastName email')
+      .populate('project', 'title category fundingType')
+      .sort({ createdAt: -1 })
+
+    res.json({ success: true, count: transactions.length, data: transactions })
+  } catch (err) {
+    next(err)
+  }
+})
 
 module.exports = router
