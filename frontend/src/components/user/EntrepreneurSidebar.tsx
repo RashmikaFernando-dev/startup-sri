@@ -3,12 +3,14 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import ListAltIcon from '@mui/icons-material/ListAlt'
 import PersonIcon from '@mui/icons-material/Person'
 import SettingsIcon from '@mui/icons-material/Settings'
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 
 const NAV = [
-  { key: 'apply',    label: 'Apply to raise', icon: <RocketLaunchIcon fontSize="small" /> },
-  { key: 'listings', label: 'My Listings',    icon: <ListAltIcon fontSize="small" />      },
-  { key: 'profile',  label: 'Profile',        icon: <PersonIcon fontSize="small" />       },
-  { key: 'settings', label: 'Settings',       icon: <SettingsIcon fontSize="small" />     },
+  { key: 'apply',      label: 'Apply to raise', icon: <RocketLaunchIcon fontSize="small" /> },
+  { key: 'listings',   label: 'My Listings',    icon: <ListAltIcon fontSize="small" />      },
+  { key: 'repayments', label: 'Repayments',     icon: <AccountBalanceIcon fontSize="small" /> },
+  { key: 'profile',    label: 'Profile',        icon: <PersonIcon fontSize="small" />       },
+  { key: 'settings',   label: 'Settings',       icon: <SettingsIcon fontSize="small" />     },
 ]
 
 interface Props {

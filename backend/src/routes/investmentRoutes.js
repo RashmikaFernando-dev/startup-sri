@@ -81,4 +81,49 @@ router.get('/my', protect, async (req, res, next) => {
   }
 })
 
+// GET /api/investments/entrepreneur  — microloan investments on entrepreneur's projects
+router.get('/entrepreneur', protect, async (req, res, next) => {
+  try {
+    const projects = await Project.find({ entrepreneur: req.user._id }).select('_id title')
+    const projectIds = projects.map(p => p._id)
+    const investments = await Investment.find({
+      project: { $in: projectIds },
+      type: 'loan',
+      'repaymentSchedule.0': { $exists: true },
+    })
+      .populate('project', 'title fundingType interestRate duration')
+      .populate('investor', 'firstName lastName email')
+      .sort({ createdAt: -1 })
+    res.json({ success: true, data: investments })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// PATCH /api/investments/:id/repayment/:index  — mark instalment as paid
+router.patch('/:id/repayment/:index', protect, async (req, res, next) => {
+  try {
+    const investment = await Investment.findById(req.params.id).populate('project', 'entrepreneur')
+    if (!investment) return res.status(404).json({ success: false, message: 'Investment not found' })
+
+    // Only the entrepreneur who owns the project can mark repayments
+    if (investment.project.entrepreneur.toString() !== req.user._id.toString())
+      return res.status(403).json({ success: false, message: 'Not authorized' })
+
+    const idx = parseInt(req.params.index)
+    const instalment = investment.repaymentSchedule[idx]
+    if (!instalment) return res.status(404).json({ success: false, message: 'Instalment not found' })
+    if (instalment.status === 'paid') return res.status(400).json({ success: false, message: 'Already paid' })
+
+    investment.repaymentSchedule[idx].status = 'paid'
+    investment.repaymentSchedule[idx].paidDate = new Date()
+    investment.markModified('repaymentSchedule')
+    await investment.save()
+
+    res.json({ success: true, data: investment })
+  } catch (err) {
+    next(err)
+  }
+})
+
 module.exports = router
