@@ -3,6 +3,7 @@ const User = require('../models/User')
 const KycVerification = require('../models/KycVerification')
 const Comment = require('../models/Comment')
 const { sendProjectApprovalEmail } = require('../utils/emailService')
+const computeCreditScore = require('../utils/creditScore')
 
 // @desc    Get all projects
 // @route   GET /api/projects
@@ -20,11 +21,18 @@ const getProjects = async (req, res, next) => {
       .populate('entrepreneur', 'firstName lastName email')
       .sort({ createdAt: -1 })
 
-    res.status(200).json({
-      success: true,
-      count: projects.length,
-      data: projects,
+    // Batch-fetch KYC records and attach credit score to each project
+    const entrepreneurIds = [...new Set(projects.map(p => p.entrepreneur?._id).filter(Boolean))]
+    const kycList = await KycVerification.find({ user: { $in: entrepreneurIds } }).lean()
+    const kycMap = Object.fromEntries(kycList.map(k => [k.user.toString(), k]))
+
+    const data = projects.map(p => {
+      const kyc = kycMap[p.entrepreneur?._id?.toString()]
+      const { score, breakdown } = computeCreditScore(p, kyc)
+      return { ...p.toObject(), creditScore: score, creditBreakdown: breakdown }
     })
+
+    res.status(200).json({ success: true, count: data.length, data })
   } catch (error) {
     next(error)
   }
@@ -40,13 +48,14 @@ const getProject = async (req, res, next) => {
       .populate('investors.user', 'firstName lastName')
 
     if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: 'Project not found',
-      })
+      return res.status(404).json({ success: false, message: 'Project not found' })
     }
 
-    res.status(200).json({ success: true, data: project })
+    const kyc = await KycVerification.findOne({ user: project.entrepreneur._id }).lean()
+    const { score, breakdown } = computeCreditScore(project, kyc)
+    const data = { ...project.toObject(), creditScore: score, creditBreakdown: breakdown }
+
+    res.status(200).json({ success: true, data })
   } catch (error) {
     next(error)
   }

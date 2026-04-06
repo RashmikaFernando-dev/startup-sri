@@ -20,6 +20,9 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import UserNavbar from '@/components/user/UserNavbar'
 
 const CATEGORIES = ['Software', 'Hardware', 'SaaS', 'Mobile App', 'Web Platform', 'AI/ML', 'Other']
@@ -56,6 +59,8 @@ export default function SubmitProject() {
     duration: '',
     businessPlan: '',
   })
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; url: string } | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('user')
@@ -77,6 +82,37 @@ export default function SubmitProject() {
   }, [])
 
   const set = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }))
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('http://localhost:5000/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message)
+      setUploadedFile({ name: file.name, url: data.url })
+      set('businessPlan', data.url)
+      setToast({ open: true, msg: 'Document uploaded successfully.', type: 'success' })
+    } catch (err: any) {
+      setToast({ open: true, msg: err.message || 'Upload failed.', type: 'error' })
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  const removeFile = () => {
+    setUploadedFile(null)
+    set('businessPlan', '')
+  }
 
   const validateStep = () => {
     if (step === 0) {
@@ -175,7 +211,7 @@ export default function SubmitProject() {
                   Go to Dashboard
                 </Button>
                 <Button variant="outlined"
-                  onClick={() => { setSubmitted(false); setStep(0); setForm({ title: '', description: '', longDescription: '', category: '', fundingType: 'microloan', fundingGoal: '', interestRate: '', equityOffered: '', duration: '', businessPlan: '' }) }}
+                  onClick={() => { setSubmitted(false); setStep(0); setUploadedFile(null); setForm({ title: '', description: '', longDescription: '', category: '', fundingType: 'microloan', fundingGoal: '', interestRate: '', equityOffered: '', duration: '', businessPlan: '' }) }}
                   sx={{ borderRadius: 2, textTransform: 'none', borderColor: '#d1d5db', color: '#374151' }}>
                   Submit Another
                 </Button>
@@ -398,16 +434,47 @@ export default function SubmitProject() {
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1940' }}>Documents</Typography>
                 <Divider />
                 <Typography variant="body2" color="text.secondary">
-                  Paste a publicly accessible URL to your business plan (optional).
+                  Upload your business plan or proposal document (optional). Accepted formats: PDF, Word, PowerPoint, images (max 10 MB).
                 </Typography>
-                <TextField
-                  label="Business Plan URL"
-                  fullWidth
-                  value={form.businessPlan}
-                  onChange={e => set('businessPlan', e.target.value)}
-                  placeholder="https://..."
-                  helperText="e.g. a Google Docs or PDF link visible to anyone with the link"
-                />
+
+                {!uploadedFile ? (
+                  <Box
+                    component="label"
+                    sx={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      border: '2px dashed #d1d5db', borderRadius: 3, p: 5, cursor: 'pointer', bgcolor: '#fafafa',
+                      '&:hover': { borderColor: '#0a1940', bgcolor: '#f0f4ff' }, transition: 'all 0.2s',
+                    }}
+                  >
+                    <input type="file" hidden accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg" onChange={handleFileUpload} />
+                    {uploading ? (
+                      <>
+                        <CircularProgress size={36} sx={{ mb: 1.5, color: '#0a1940' }} />
+                        <Typography variant="body2" color="text.secondary">Uploading…</Typography>
+                      </>
+                    ) : (
+                      <>
+                        <UploadFileIcon sx={{ fontSize: 44, color: '#9ca3af', mb: 1.5 }} />
+                        <Typography sx={{ fontWeight: 700, color: '#374151', mb: 0.5 }}>Click to upload document</Typography>
+                        <Typography variant="body2" color="text.secondary">PDF, Word, PowerPoint or image · max 10 MB</Typography>
+                      </>
+                    )}
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#f0fdf4', border: '1px solid #86efac', borderRadius: 2.5, p: 2.5 }}>
+                    <InsertDriveFileIcon sx={{ fontSize: 36, color: '#16a34a', flexShrink: 0 }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 700, color: '#166534', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {uploadedFile.name}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#16a34a', fontSize: 12 }}>Uploaded successfully</Typography>
+                    </Box>
+                    <Button size="small" onClick={removeFile} startIcon={<DeleteOutlineIcon />}
+                      sx={{ color: '#dc2626', textTransform: 'none', flexShrink: 0 }}>
+                      Remove
+                    </Button>
+                  </Box>
+                )}
               </Box>
             )}
 

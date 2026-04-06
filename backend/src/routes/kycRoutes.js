@@ -48,6 +48,21 @@ router.get('/my', entrepreneur, async (req, res) => {
   }
 })
 
+// PATCH /api/kyc/add-business-reg  — add business registration after KYC approval
+router.patch('/add-business-reg', entrepreneur, async (req, res) => {
+  try {
+    const kyc = await KycVerification.findOne({ user: req.user.id })
+    if (!kyc) return res.status(404).json({ success: false, message: 'KYC record not found.' })
+    if (kyc.status !== 'approved') return res.status(400).json({ success: false, message: 'Only approved KYC records can be updated.' })
+    if (!req.body.businessRegImage) return res.status(400).json({ success: false, message: 'businessRegImage is required.' })
+    kyc.businessRegImage = req.body.businessRegImage
+    await kyc.save()
+    res.json({ success: true, data: kyc })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
 // GET /api/kyc/admin/list
 router.get('/admin/list', admin, async (req, res) => {
   try {

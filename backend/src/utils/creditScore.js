@@ -1,46 +1,31 @@
+const RULES = [
+  { label: 'Identity Verified (KYC)',       points: 30 },
+  { label: 'Business Plan Uploaded',        points: 20 },
+  { label: 'Detailed Description Provided', points: 15 },
+  { label: 'Business Registration Filed',   points: 15 },
+  { label: 'Has Active Investors',          points: 10 },
+  { label: 'Funding Progress ≥ 25%',       points: 10 },
+]
+
 /**
- * Calculate a credit score (0–100) for a user.
- * @param {object} userData
- * @param {string} userData.verificationStatus  - 'approved' | 'pending' | other
- * @param {number} userData.totalProjects
- * @param {number} userData.successfulProjects
- * @param {number} userData.onTimeRepayments
- * @param {number} userData.totalRepayments
- * @param {number} userData.accountAge  - in months
- * @returns {number}
+ * Compute a rule-based credit score (0–100) for a project.
+ * @param {Object} project  - Mongoose project document or plain object
+ * @param {Object|null} kyc - KYC record for the entrepreneur (or null)
+ * @returns {{ score: number, breakdown: Array }}
  */
-const calculateCreditScore = (userData) => {
-  let score = 0
+const computeCreditScore = (project, kyc) => {
+  const checks = [
+    kyc?.status === 'approved',
+    !!project.documents?.businessPlan,
+    (project.description?.length || 0) > 200,
+    !!kyc?.businessRegImage,
+    (project.investors?.length || 0) > 0,
+    project.fundingGoal > 0 && (project.currentFunding / project.fundingGoal) >= 0.25,
+  ]
 
-  // Identity Verification (25 points)
-  if (userData.verificationStatus === 'approved') {
-    score += 25
-  } else if (userData.verificationStatus === 'pending') {
-    score += 10
-  }
-
-  // Project Track Record (30 points)
-  if (userData.totalProjects > 0) {
-    const successRate = userData.successfulProjects / userData.totalProjects
-    score += successRate * 30
-  }
-
-  // Repayment History (35 points)
-  if (userData.totalRepayments > 0) {
-    const repaymentRate = userData.onTimeRepayments / userData.totalRepayments
-    score += repaymentRate * 35
-  }
-
-  // Account Age (10 points)
-  if (userData.accountAge >= 12) {
-    score += 10
-  } else if (userData.accountAge >= 6) {
-    score += 5
-  } else if (userData.accountAge >= 3) {
-    score += 2
-  }
-
-  return Math.min(Math.round(score), 100)
+  const breakdown = RULES.map((rule, i) => ({ ...rule, met: checks[i] }))
+  const score = breakdown.reduce((sum, r) => sum + (r.met ? r.points : 0), 0)
+  return { score, breakdown }
 }
 
-module.exports = { calculateCreditScore }
+module.exports = computeCreditScore

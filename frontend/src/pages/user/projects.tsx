@@ -42,6 +42,7 @@ import EmailIcon from '@mui/icons-material/Email'
 import PhoneIcon from '@mui/icons-material/Phone'
 import SearchIcon from '@mui/icons-material/Search'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import StarIcon from '@mui/icons-material/Star'
 import Footer from '../../components/layout/Footer'
 import UserNavbar from '@/components/user/UserNavbar'
 import InvestorSidebar from '@/components/user/InvestorSidebar'
@@ -67,6 +68,11 @@ const STATUS_COLOR: Record<string, any> = {
   pending: 'warning', approved: 'success', rejected: 'error',
   funded: 'primary', active: 'success', completed: 'info',
 }
+
+const scoreStyle = (s: number) =>
+  s >= 70 ? { bg: '#d1fae5', color: '#065f46' }
+  : s >= 40 ? { bg: '#fef3c7', color: '#92400e' }
+  : { bg: '#fee2e2', color: '#991b1b' }
 
 const CAT_COLOR: Record<string, string> = {
   Software: '#1565c0', Hardware: '#6a1b9a', SaaS: '#00838f',
@@ -387,6 +393,53 @@ export default function InvestorDashboard() {
                           </tbody>
                         </table>
                       </Box>
+
+                      {/* ── Credit Score ── */}
+                      {typeof (p as any).creditScore === 'number' && (() => {
+                        const score: number = (p as any).creditScore
+                        const breakdown: { label: string; points: number; met: boolean }[] = (p as any).creditBreakdown || []
+                        const { bg, color } = scoreStyle(score)
+                        return (
+                          <Box sx={{ mt: 3 }}>
+                            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, color: '#0a1940' }}>Credit Score</Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 2.5, p: 2.5, bgcolor: bg, borderRadius: 2 }}>
+                              <Box sx={{ textAlign: 'center' }}>
+                                <Typography sx={{ fontSize: 36, fontWeight: 900, color, lineHeight: 1 }}>{score}</Typography>
+                                <Typography sx={{ fontSize: 11, fontWeight: 700, color }}>out of 100</Typography>
+                              </Box>
+                              <Box sx={{ flex: 1 }}>
+                                <LinearProgress variant="determinate" value={score}
+                                  sx={{ height: 10, borderRadius: 5, bgcolor: 'rgba(0,0,0,0.1)', '& .MuiLinearProgress-bar': { bgcolor: color, borderRadius: 5 } }} />
+                                <Typography sx={{ mt: 0.8, fontSize: 12, color, fontWeight: 600 }}>
+                                  {score >= 70 ? 'Strong credibility' : score >= 40 ? 'Moderate credibility' : 'Low credibility'}
+                                </Typography>
+                              </Box>
+                            </Box>
+                            <Box sx={{ border: '1px solid #e5e7eb', borderRadius: 2, overflow: 'hidden' }}>
+                              {breakdown.map((r, i) => (
+                                <Box key={r.label} sx={{
+                                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                  px: 2, py: 1.5, bgcolor: i % 2 === 0 ? '#fff' : '#f9fafb',
+                                  borderBottom: i < breakdown.length - 1 ? '1px solid #e5e7eb' : 'none',
+                                }}>
+                                  <Typography sx={{ fontSize: 13, color: '#374151' }}>{r.label}</Typography>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography sx={{ fontSize: 12, color: '#6b7280' }}>+{r.points} pts</Typography>
+                                    <Box sx={{
+                                      width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      bgcolor: r.met ? '#d1fae5' : '#fee2e2',
+                                    }}>
+                                      <Typography sx={{ fontSize: 11, fontWeight: 800, color: r.met ? '#065f46' : '#991b1b' }}>
+                                        {r.met ? '✓' : '✗'}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                </Box>
+                              ))}
+                            </Box>
+                          </Box>
+                        )
+                      })()}
                     </Box>
                   )}
 
@@ -693,6 +746,21 @@ export default function InvestorDashboard() {
                             sx={{ height: 5, borderRadius: 3, bgcolor: '#f3f4f6', '& .MuiLinearProgress-bar': { bgcolor: '#0a1940' } }}
                           />
                         </Box>
+
+                        {/* Credit score badge */}
+                        {typeof (p as any).creditScore === 'number' && (() => {
+                          const { bg, color } = scoreStyle((p as any).creditScore)
+                          return (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1.5 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, px: 1.2, py: 0.3, borderRadius: 1.5, bgcolor: bg }}>
+                                <StarIcon sx={{ fontSize: 12, color }} />
+                                <Typography sx={{ fontSize: 11, fontWeight: 800, color }}>
+                                  Score {(p as any).creditScore}/100
+                                </Typography>
+                              </Box>
+                            </Box>
+                          )
+                        })()}
 
                         {/* Goal + type info */}
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
