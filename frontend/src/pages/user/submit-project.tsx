@@ -20,6 +20,9 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
+import UploadFileIcon from '@mui/icons-material/UploadFile'
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import UserNavbar from '@/components/user/UserNavbar'
 
 const CATEGORIES = ['Software', 'Hardware', 'SaaS', 'Mobile App', 'Web Platform', 'AI/ML', 'Other']
@@ -56,6 +59,8 @@ export default function SubmitProject() {
     duration: '',
     businessPlan: '',
   })
+  const [uploadedFile, setUploadedFile] = useState<{ name: string; url: string } | null>(null)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     const stored = localStorage.getItem('user')
@@ -77,6 +82,37 @@ export default function SubmitProject() {
   }, [])
 
   const set = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }))
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const token = localStorage.getItem('token')
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('http://localhost:5000/api/upload', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message)
+      setUploadedFile({ name: file.name, url: data.url })
+      set('businessPlan', data.url)
+      setToast({ open: true, msg: 'Document uploaded successfully.', type: 'success' })
+    } catch (err: any) {
+      setToast({ open: true, msg: err.message || 'Upload failed.', type: 'error' })
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  const removeFile = () => {
+    setUploadedFile(null)
+    set('businessPlan', '')
+  }
 
   const validateStep = () => {
     if (step === 0) {
@@ -175,7 +211,7 @@ export default function SubmitProject() {
                   Go to Dashboard
                 </Button>
                 <Button variant="outlined"
-                  onClick={() => { setSubmitted(false); setStep(0); setForm({ title: '', description: '', longDescription: '', category: '', fundingType: 'microloan', fundingGoal: '', interestRate: '', equityOffered: '', duration: '', businessPlan: '' }) }}
+                  onClick={() => { setSubmitted(false); setStep(0); setUploadedFile(null); setForm({ title: '', description: '', longDescription: '', category: '', fundingType: 'microloan', fundingGoal: '', interestRate: '', equityOffered: '', duration: '', businessPlan: '' }) }}
                   sx={{ borderRadius: 2, textTransform: 'none', borderColor: '#d1d5db', color: '#374151' }}>
                   Submit Another
                 </Button>
@@ -200,40 +236,80 @@ export default function SubmitProject() {
             <Box display="flex" justifyContent="center" py={8}><CircularProgress /></Box>
           )}
           {kycStatus === 'not_submitted' && (
-            <Box textAlign="center" py={8}>
-              <VerifiedUserIcon sx={{ fontSize: 64, color: '#9ca3af', mb: 2 }} />
-              <Typography variant="h5" fontWeight={700} mb={1}>KYC Verification Required</Typography>
-              <Typography color="text.secondary" mb={3}>
-                You must complete identity verification before submitting a project.
-              </Typography>
+            <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 3, p: 4, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <VerifiedUserIcon sx={{ fontSize: 26, color: '#9ca3af' }} />
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#111827', mb: 0.4 }}>KYC Verification Required</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Complete identity verification before submitting a project.
+                </Typography>
+              </Box>
               <Button variant="contained" onClick={() => router.push('/user/verifications')}
-                sx={{ bgcolor: '#0a1940', '&:hover': { bgcolor: '#000000' }, borderRadius: 2, textTransform: 'none', fontWeight: 700, px: 4 }}>
-                Start KYC Verification
+                sx={{ bgcolor: '#0a1940', '&:hover': { bgcolor: '#000' }, borderRadius: 2, textTransform: 'none', fontWeight: 700, flexShrink: 0 }}>
+                Start KYC
               </Button>
             </Box>
           )}
           {kycStatus === 'pending' && (
-            <Box textAlign="center" py={8}>
-              <VerifiedUserIcon sx={{ fontSize: 64, color: '#f59e0b', mb: 2 }} />
-              <Typography variant="h5" fontWeight={700} mb={1}>KYC Under Review</Typography>
-              <Typography color="text.secondary" mb={3}>
-                Your documents are pending admin review. You will be able to submit projects once approved.
-              </Typography>
-              <Button variant="outlined" onClick={() => router.push('/user/verifications')} sx={{ borderRadius: 2, textTransform: 'none' }}>
-                View KYC Status
+            <Box sx={{ bgcolor: '#fffbeb', border: '1px solid #fde68a', borderRadius: 3, p: 4, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <VerifiedUserIcon sx={{ fontSize: 26, color: '#f59e0b' }} />
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#92400e', mb: 0.4 }}>KYC Under Review</Typography>
+                <Typography variant="body2" sx={{ color: '#92400e', opacity: 0.8 }}>
+                  Your documents are pending admin review. You can submit projects once approved.
+                </Typography>
+              </Box>
+              <Button variant="outlined" onClick={() => router.push('/user/verifications')}
+                sx={{ borderRadius: 2, textTransform: 'none', borderColor: '#f59e0b', color: '#92400e', '&:hover': { bgcolor: '#fef3c7' }, flexShrink: 0 }}>
+                View Status
               </Button>
             </Box>
           )}
           {kycStatus === 'rejected' && (
-            <Box textAlign="center" py={8}>
-              <VerifiedUserIcon sx={{ fontSize: 64, color: '#ef4444', mb: 2 }} />
-              <Typography variant="h5" fontWeight={700} mb={1}>KYC Rejected</Typography>
-              <Typography color="text.secondary" mb={3}>
-                Your KYC was not approved. Please resubmit your documents.
-              </Typography>
-              <Button variant="contained" color="error" onClick={() => router.push('/user/verifications')} sx={{ borderRadius: 2, textTransform: 'none', px: 4 }}>
+            <Box sx={{ bgcolor: '#fff5f5', border: '1px solid #fecaca', borderRadius: 3, p: 4, display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <VerifiedUserIcon sx={{ fontSize: 26, color: '#ef4444' }} />
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#991b1b', mb: 0.4 }}>KYC Rejected</Typography>
+                <Typography variant="body2" sx={{ color: '#991b1b', opacity: 0.8 }}>
+                  Your KYC was not approved. Please resubmit your documents to continue.
+                </Typography>
+              </Box>
+              <Button variant="contained" onClick={() => router.push('/user/verifications')}
+                sx={{ bgcolor: '#ef4444', '&:hover': { bgcolor: '#dc2626' }, borderRadius: 2, textTransform: 'none', fontWeight: 700, flexShrink: 0 }}>
                 Resubmit KYC
               </Button>
+            </Box>
+          )}
+
+          {/* How it works — shown when KYC not yet approved */}
+          {kycStatus !== 'approved' && kycStatus !== 'loading' && (
+            <Box sx={{ mt: 3, bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 3, p: 3 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: 14, color: '#111827', mb: 2 }}>
+                How the process works
+              </Typography>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {[
+                  { step: '01', title: 'Complete KYC Verification', desc: 'Upload your NIC, proof of address and any business documents for identity verification.' },
+                  { step: '02', title: 'Admin Reviews Your Documents', desc: 'Our team reviews your submission and approves or requests corrections within 1–2 business days.' },
+                  { step: '03', title: 'Submit Your Project', desc: 'Once approved, you can create your startup listing and start raising funds from investors.' },
+                ].map(item => (
+                  <Box key={item.step} sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                    <Box sx={{ width: 32, height: 32, borderRadius: 2, bgcolor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#6b7280' }}>{item.step}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography sx={{ fontWeight: 700, fontSize: 13, color: '#111827' }}>{item.title}</Typography>
+                      <Typography sx={{ fontSize: 13, color: '#6b7280', mt: 0.2 }}>{item.desc}</Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
             </Box>
           )}
 
@@ -358,16 +434,47 @@ export default function SubmitProject() {
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1940' }}>Documents</Typography>
                 <Divider />
                 <Typography variant="body2" color="text.secondary">
-                  Paste a publicly accessible URL to your business plan (optional).
+                  Upload your business plan or proposal document (optional). Accepted formats: PDF, Word, PowerPoint, images (max 10 MB).
                 </Typography>
-                <TextField
-                  label="Business Plan URL"
-                  fullWidth
-                  value={form.businessPlan}
-                  onChange={e => set('businessPlan', e.target.value)}
-                  placeholder="https://..."
-                  helperText="e.g. a Google Docs or PDF link visible to anyone with the link"
-                />
+
+                {!uploadedFile ? (
+                  <Box
+                    component="label"
+                    sx={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      border: '2px dashed #d1d5db', borderRadius: 3, p: 5, cursor: 'pointer', bgcolor: '#fafafa',
+                      '&:hover': { borderColor: '#0a1940', bgcolor: '#f0f4ff' }, transition: 'all 0.2s',
+                    }}
+                  >
+                    <input type="file" hidden accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg" onChange={handleFileUpload} />
+                    {uploading ? (
+                      <>
+                        <CircularProgress size={36} sx={{ mb: 1.5, color: '#0a1940' }} />
+                        <Typography variant="body2" color="text.secondary">Uploading…</Typography>
+                      </>
+                    ) : (
+                      <>
+                        <UploadFileIcon sx={{ fontSize: 44, color: '#9ca3af', mb: 1.5 }} />
+                        <Typography sx={{ fontWeight: 700, color: '#374151', mb: 0.5 }}>Click to upload document</Typography>
+                        <Typography variant="body2" color="text.secondary">PDF, Word, PowerPoint or image · max 10 MB</Typography>
+                      </>
+                    )}
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#f0fdf4', border: '1px solid #86efac', borderRadius: 2.5, p: 2.5 }}>
+                    <InsertDriveFileIcon sx={{ fontSize: 36, color: '#16a34a', flexShrink: 0 }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 700, color: '#166534', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {uploadedFile.name}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#16a34a', fontSize: 12 }}>Uploaded successfully</Typography>
+                    </Box>
+                    <Button size="small" onClick={removeFile} startIcon={<DeleteOutlineIcon />}
+                      sx={{ color: '#dc2626', textTransform: 'none', flexShrink: 0 }}>
+                      Remove
+                    </Button>
+                  </Box>
+                )}
               </Box>
             )}
 

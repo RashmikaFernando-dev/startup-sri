@@ -2,29 +2,17 @@ import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import {
-  Box,
-  Typography,
-  Chip,
-  CircularProgress,
-  Alert,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Divider,
-  Stack,
-  Avatar,
-  ToggleButton,
-  ToggleButtonGroup,
+  Box, Typography, Button, Avatar, Alert,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, Divider, Stack, CircularProgress,
 } from '@mui/material'
-import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import AdminNavbar from '@/components/admin/AdminNavbar'
 import AdminSidebar from '@/components/admin/AdminSidebar'
+
+const CONTENT_LEFT = 240
 
 interface KycRecord {
   _id: string
@@ -44,32 +32,31 @@ interface KycRecord {
   reviewedBy?: { firstName: string; lastName: string }
 }
 
-const STATUS_COLOR: Record<string, 'default' | 'warning' | 'success' | 'error'> = {
-  pending: 'warning',
-  approved: 'success',
-  rejected: 'error',
+const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+  pending:  { bg: '#fef3c7', text: '#92400e' },
+  approved: { bg: '#d1fae5', text: '#065f46' },
+  rejected: { bg: '#fee2e2', text: '#991b1b' },
 }
+
+const FILTER_TABS = ['pending', 'approved', 'rejected', 'all']
 
 function DocumentThumb({ src, label }: { src: string; label: string }) {
   if (!src) return null
-  const isImage = src.startsWith('data:image')
+  const isImage = src.startsWith('data:image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(src)
   return (
     <Box>
-      <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>{label}</Typography>
+      <Typography sx={{ fontSize: 12, color: '#9ca3af', mb: 0.5 }}>{label}</Typography>
       {isImage ? (
         <Box
           component="img"
           src={src}
           alt={label}
-          sx={{
-            width: 160, height: 120, objectFit: 'cover',
-            borderRadius: 2, border: '1px solid #e0e0e0',
-            cursor: 'pointer',
-          }}
+          sx={{ width: 160, height: 110, objectFit: 'cover', borderRadius: 2, border: '1px solid #e5e7eb', cursor: 'pointer' }}
           onClick={() => window.open(src, '_blank')}
         />
       ) : (
-        <Button size="small" variant="outlined" startIcon={<OpenInNewIcon />} onClick={() => window.open(src, '_blank')}>
+        <Button size="small" variant="outlined" startIcon={<OpenInNewIcon />} onClick={() => window.open(src, '_blank')}
+          sx={{ textTransform: 'none', borderRadius: 1.5 }}>
           View {label}
         </Button>
       )}
@@ -109,15 +96,11 @@ export default function AdminKycReview() {
   const fetchRecords = async () => {
     setLoading(true)
     try {
-      const url = `http://localhost:5000/api/kyc/admin/list${statusFilter ? `?status=${statusFilter}` : ''}`
+      const url = `http://localhost:5000/api/kyc/admin/list${statusFilter && statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token()}` } })
       const data = await res.json()
       if (data.success) setRecords(data.data)
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
+    } catch {} finally { setLoading(false) }
   }
 
   const handleOpenReview = (record: KycRecord) => {
@@ -138,10 +121,7 @@ export default function AdminKycReview() {
     try {
       const res = await fetch(`http://localhost:5000/api/kyc/admin/${selected!._id}/review`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token()}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
         body: JSON.stringify({ status: reviewAction, rejectionReason: rejectionReason.trim() || undefined }),
       })
       const data = await res.json()
@@ -164,154 +144,175 @@ export default function AdminKycReview() {
   return (
     <>
       <Head><title>KYC Review – Admin | StartupSri</title></Head>
-      <Box sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(95deg, #101224 0%, #22274a 100%)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-        <AdminNavbar admin={admin} onLogout={handleLogout} />
 
-        <Box sx={{
-          flex: 1,
-          display: 'flex',
-          maxWidth: '100%',
-          mx: 0,
-          width: '100%',
-          px: 0,
-          py: { xs: 3, md: 4 },
-          gap: 2,
-          bgcolor: { xs: 'transparent', md: '#0d1329' },
-          borderRadius: 0,
-          boxShadow: { xs: 'none', md: '0 20px 40px rgba(7, 12, 22, 0.22)' },
-        }}>
-          <AdminSidebar activeKey="kyc" />
+      <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#f9fafb' }}>
+        <AdminSidebar activeKey="kyc" />
 
-          <Box sx={{
-            flex: 1,
-            minWidth: 0,
-            bgcolor: '#d5dae3',
-            borderRadius: 0,
-            p: { xs: 0, md: 3 },
-          }}>
-            <Stack direction="row" alignItems="center" spacing={1.5} mb={1}>
-              <VerifiedUserIcon sx={{ color: '#0a1940' }} />
-              <Typography variant="h5" sx={{ fontWeight: 800, color: '#0a1940' }}>KYC Review</Typography>
-            </Stack>
-            <Typography variant="body2" color="text.secondary" mb={3}>
-              Review entrepreneur identity verification submissions
-            </Typography>
+        <Box sx={{ flex: 1, ml: { xs: 0, md: `${CONTENT_LEFT}px` }, display: 'flex', flexDirection: 'column' }}>
+          <AdminNavbar
+            admin={admin}
+            onLogout={handleLogout}
+            pageTitle="KYC Review"
+            pageSubtitle="Review entrepreneur identity verification submissions"
+          />
 
-            {/* Filter */}
-            <ToggleButtonGroup
-              value={statusFilter}
-              exclusive
-              onChange={(_, val) => { if (val !== null) setStatusFilter(val) }}
-              size="small"
-              sx={{ mb: 3 }}
-            >
-              <ToggleButton value="pending">Pending</ToggleButton>
-              <ToggleButton value="approved">Approved</ToggleButton>
-              <ToggleButton value="rejected">Rejected</ToggleButton>
-              <ToggleButton value="">All</ToggleButton>
-            </ToggleButtonGroup>
+          <Box sx={{ flex: 1, px: { xs: 2, md: 4 }, pt: '80px', pb: 6 }}>
 
-            {loading ? (
-              <Box display="flex" justifyContent="center" py={6}><CircularProgress /></Box>
-            ) : records.length === 0 ? (
-              <Alert severity="info">No {statusFilter} KYC submissions found.</Alert>
-            ) : (
-              <Stack spacing={2}>
-                {records.map(rec => (
-                  <Box
-                    key={rec._id}
-                    sx={{
-                      bgcolor: '#fff', borderRadius: 3, border: '1px solid #e5e7eb',
-                      p: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-                    }}
-                  >
-                    <Avatar sx={{ bgcolor: '#0a1940', width: 44, height: 44 }}>
-                      {rec.user?.firstName?.[0]}{rec.user?.lastName?.[0]}
-                    </Avatar>
-                    <Box flex={1} minWidth={0}>
-                      <Typography fontWeight={600}>
-                        {rec.user?.firstName} {rec.user?.lastName}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">{rec.user?.email}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        NIC: {rec.nic} · Submitted {new Date(rec.createdAt).toLocaleDateString()}
-                        {rec.submissionCount > 1 && ` · Resubmission #${rec.submissionCount}`}
-                      </Typography>
-                      {rec.status === 'rejected' && rec.rejectionReason && (
-                        <Typography variant="caption" color="error.main" display="block">
-                          Reason: {rec.rejectionReason}
-                        </Typography>
-                      )}
-                    </Box>
-                    <Chip
-                      label={rec.status.charAt(0).toUpperCase() + rec.status.slice(1)}
-                      color={STATUS_COLOR[rec.status]}
-                      size="small"
-                      sx={{ mr: 1 }}
-                    />
-                    {rec.status === 'pending' && (
-                      <Button
-                        variant="contained"
-                        size="small"
-                        sx={{ bgcolor: '#111111', '&:hover': { bgcolor: '#000000' }, whiteSpace: 'nowrap' }}
-                        onClick={() => handleOpenReview(rec)}
-                      >
-                        Review
-                      </Button>
-                    )}
-                    {rec.status !== 'pending' && (
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => handleOpenReview(rec)}
-                        sx={{ whiteSpace: 'nowrap' }}
-                      >
-                        View
-                      </Button>
-                    )}
+            {/* Filter tabs */}
+            <Box sx={{ display: 'flex', gap: 1, mt: 3, mb: 3 }}>
+              {FILTER_TABS.map(tab => (
+                <Box
+                  key={tab}
+                  onClick={() => setStatusFilter(tab)}
+                  sx={{
+                    px: 2.5, py: 1, borderRadius: 2, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                    bgcolor: statusFilter === tab ? '#111827' : '#fff',
+                    color: statusFilter === tab ? '#fff' : '#6b7280',
+                    border: '1px solid',
+                    borderColor: statusFilter === tab ? '#111827' : '#e5e7eb',
+                    textTransform: 'capitalize',
+                    transition: 'all 0.15s',
+                    '&:hover': { borderColor: '#111827', color: statusFilter === tab ? '#fff' : '#111827' },
+                  }}
+                >
+                  {tab === 'all' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </Box>
+              ))}
+            </Box>
+
+            {/* Records table */}
+            <Box sx={{ bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
+                <Box component="thead">
+                  <Box component="tr" sx={{ bgcolor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                    {['Applicant', 'NIC', 'Submitted', 'Submissions', 'Status', 'Actions'].map(h => (
+                      <Box component="th" key={h} sx={{ px: 3, py: 1.8, textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {h}
+                      </Box>
+                    ))}
                   </Box>
-                ))}
-              </Stack>
+                </Box>
+
+                <Box component="tbody">
+                  {loading ? (
+                    <Box component="tr">
+                      <Box component="td" colSpan={6} sx={{ px: 3, py: 6, textAlign: 'center' }}>
+                        <CircularProgress size={28} sx={{ color: '#9ca3af' }} />
+                      </Box>
+                    </Box>
+                  ) : records.length === 0 ? (
+                    <Box component="tr">
+                      <Box component="td" colSpan={6} sx={{ px: 3, py: 6, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
+                        No {statusFilter !== 'all' ? statusFilter : ''} KYC submissions found.
+                      </Box>
+                    </Box>
+                  ) : records.map((rec, idx, arr) => {
+                    const sc = STATUS_COLORS[rec.status] ?? { bg: '#f3f4f6', text: '#374151' }
+                    return (
+                      <Box component="tr" key={rec._id} sx={{
+                        borderBottom: idx < arr.length - 1 ? '1px solid #f3f4f6' : 'none',
+                        '&:hover': { bgcolor: '#fafafa' },
+                        transition: 'background 0.12s',
+                      }}>
+                        <Box component="td" sx={{ px: 3, py: 2.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Avatar sx={{ bgcolor: '#111827', width: 34, height: 34, fontSize: 13, fontWeight: 700 }}>
+                              {rec.user?.firstName?.[0]}{rec.user?.lastName?.[0]}
+                            </Avatar>
+                            <Box>
+                              <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
+                                {rec.user?.firstName} {rec.user?.lastName}
+                              </Typography>
+                              <Typography sx={{ fontSize: 12, color: '#9ca3af' }}>{rec.user?.email}</Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5, fontSize: 13, color: '#374151' }}>{rec.nic}</Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5, fontSize: 13, color: '#9ca3af', whiteSpace: 'nowrap' }}>
+                          {new Date(rec.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5, fontSize: 13, color: '#374151' }}>
+                          {rec.submissionCount > 1 ? (
+                            <Box sx={{ display: 'inline-flex', bgcolor: '#fef3c7', color: '#92400e', fontSize: 12, fontWeight: 700, px: 1.5, py: 0.4, borderRadius: 10 }}>
+                              #{rec.submissionCount}
+                            </Box>
+                          ) : '1'}
+                        </Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5 }}>
+                          <Box sx={{ display: 'inline-flex', bgcolor: sc.bg, color: sc.text, fontSize: 12, fontWeight: 700, px: 1.5, py: 0.4, borderRadius: 10, textTransform: 'capitalize' }}>
+                            {rec.status}
+                          </Box>
+                        </Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5 }}>
+                          {rec.status === 'pending' ? (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              onClick={() => handleOpenReview(rec)}
+                              sx={{ bgcolor: '#111827', borderRadius: 1.5, textTransform: 'none', fontWeight: 700, fontSize: 12, '&:hover': { bgcolor: '#1f2937' } }}
+                            >
+                              Review
+                            </Button>
+                          ) : (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              onClick={() => handleOpenReview(rec)}
+                              sx={{ borderRadius: 1.5, textTransform: 'none', fontSize: 12, borderColor: '#e5e7eb', color: '#6b7280', '&:hover': { borderColor: '#9ca3af', color: '#111827' } }}
+                            >
+                              View
+                            </Button>
+                          )}
+                        </Box>
+                      </Box>
+                    )
+                  })}
+                </Box>
+              </Box>
+            </Box>
+
+            {!loading && records.length > 0 && (
+              <Typography sx={{ mt: 2, fontSize: 13, color: '#9ca3af' }}>
+                {records.length} record{records.length !== 1 ? 's' : ''} found
+              </Typography>
             )}
           </Box>
         </Box>
       </Box>
 
       {/* Review Dialog */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: '#111827', display: 'flex', alignItems: 'center', gap: 1.5 }}>
           KYC Review — {selected?.user?.firstName} {selected?.user?.lastName}
-          <Chip
-            label={selected?.status}
-            color={selected ? STATUS_COLOR[selected.status] : 'default'}
-            size="small"
-            sx={{ ml: 1.5 }}
-          />
+          {selected && (
+            <Box sx={{ display: 'inline-flex', bgcolor: STATUS_COLORS[selected.status]?.bg, color: STATUS_COLORS[selected.status]?.text, fontSize: 12, fontWeight: 700, px: 1.5, py: 0.4, borderRadius: 10, textTransform: 'capitalize' }}>
+              {selected.status}
+            </Box>
+          )}
         </DialogTitle>
+
         <DialogContent dividers>
           {selected && (
-            <Stack spacing={2}>
+            <Stack spacing={2.5}>
               {/* Personal info */}
               <Box>
-                <Typography variant="subtitle2" fontWeight={700} mb={1}>Personal Information</Typography>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <Box flex={1}>
-                    <Typography variant="caption" color="text.secondary">NIC</Typography>
-                    <Typography>{selected.nic}</Typography>
+                <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#111827', mb: 1.5 }}>Personal Information</Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                  <Box sx={{ bgcolor: '#f9fafb', borderRadius: 1.5, p: 2 }}>
+                    <Typography sx={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, mb: 0.3 }}>NIC</Typography>
+                    <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{selected.nic}</Typography>
                   </Box>
-                  <Box flex={1}>
-                    <Typography variant="caption" color="text.secondary">Date of Birth</Typography>
-                    <Typography>{selected.dateOfBirth ? new Date(selected.dateOfBirth).toLocaleDateString() : '—'}</Typography>
+                  <Box sx={{ bgcolor: '#f9fafb', borderRadius: 1.5, p: 2 }}>
+                    <Typography sx={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, mb: 0.3 }}>Date of Birth</Typography>
+                    <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
+                      {selected.dateOfBirth ? new Date(selected.dateOfBirth).toLocaleDateString() : '—'}
+                    </Typography>
                   </Box>
-                </Stack>
-                <Box mt={1}>
-                  <Typography variant="caption" color="text.secondary">Address</Typography>
-                  <Typography>{selected.address}</Typography>
+                </Box>
+                <Box sx={{ bgcolor: '#f9fafb', borderRadius: 1.5, p: 2, mt: 1.5 }}>
+                  <Typography sx={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, mb: 0.3 }}>Address</Typography>
+                  <Typography sx={{ fontSize: 14, color: '#111827' }}>{selected.address}</Typography>
                 </Box>
               </Box>
 
@@ -319,40 +320,50 @@ export default function AdminKycReview() {
 
               {/* Documents */}
               <Box>
-                <Typography variant="subtitle2" fontWeight={700} mb={2}>Documents</Typography>
-                <Stack direction="row" flexWrap="wrap" gap={2}>
+                <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#111827', mb: 1.5 }}>Documents</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
                   <DocumentThumb src={selected.nicFrontImage} label="NIC Front" />
                   <DocumentThumb src={selected.nicBackImage} label="NIC Back" />
                   <DocumentThumb src={selected.proofOfAddressImage} label="Proof of Address" />
                   {selected.businessRegImage && <DocumentThumb src={selected.businessRegImage} label="Business Reg." />}
-                </Stack>
+                </Box>
               </Box>
 
-              {/* Only show review controls if still pending */}
+              {/* Decision controls (only if pending) */}
               {selected.status === 'pending' && (
                 <>
                   <Divider />
                   <Box>
-                    <Typography variant="subtitle2" fontWeight={700} mb={1.5}>Decision</Typography>
-                    {reviewError && <Alert severity="error" sx={{ mb: 1.5 }}>{reviewError}</Alert>}
-                    <Stack direction="row" spacing={2} mb={2}>
+                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#111827', mb: 1.5 }}>Decision</Typography>
+                    {reviewError && <Alert severity="error" sx={{ mb: 1.5, borderRadius: 1.5 }}>{reviewError}</Alert>}
+                    <Box sx={{ display: 'flex', gap: 1.5, mb: 2 }}>
                       <Button
                         variant={reviewAction === 'approved' ? 'contained' : 'outlined'}
-                        color="success"
                         startIcon={<CheckCircleIcon />}
                         onClick={() => setReviewAction('approved')}
+                        sx={{
+                          borderRadius: 1.5, textTransform: 'none', fontWeight: 700,
+                          ...(reviewAction === 'approved'
+                            ? { bgcolor: '#059669', '&:hover': { bgcolor: '#047857' } }
+                            : { borderColor: '#e5e7eb', color: '#374151' }),
+                        }}
                       >
                         Approve
                       </Button>
                       <Button
                         variant={reviewAction === 'rejected' ? 'contained' : 'outlined'}
-                        color="error"
                         startIcon={<CancelIcon />}
                         onClick={() => setReviewAction('rejected')}
+                        sx={{
+                          borderRadius: 1.5, textTransform: 'none', fontWeight: 700,
+                          ...(reviewAction === 'rejected'
+                            ? { bgcolor: '#ef4444', '&:hover': { bgcolor: '#dc2626' } }
+                            : { borderColor: '#e5e7eb', color: '#374151' }),
+                        }}
                       >
                         Reject
                       </Button>
-                    </Stack>
+                    </Box>
                     {reviewAction === 'rejected' && (
                       <TextField
                         label="Rejection Reason"
@@ -362,22 +373,23 @@ export default function AdminKycReview() {
                         value={rejectionReason}
                         onChange={e => setRejectionReason(e.target.value)}
                         placeholder="Explain why the KYC was rejected…"
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 1.5 } }}
                       />
                     )}
                   </Box>
                 </>
               )}
 
-              {/* Show review result for already reviewed */}
+              {/* Already reviewed */}
               {selected.status !== 'pending' && selected.reviewedAt && (
                 <>
                   <Divider />
                   <Box>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography sx={{ fontSize: 12, color: '#9ca3af' }}>
                       Reviewed by {selected.reviewedBy?.firstName} {selected.reviewedBy?.lastName} on {new Date(selected.reviewedAt).toLocaleString()}
                     </Typography>
                     {selected.status === 'rejected' && selected.rejectionReason && (
-                      <Alert severity="error" sx={{ mt: 1 }}>Reason: {selected.rejectionReason}</Alert>
+                      <Alert severity="error" sx={{ mt: 1, borderRadius: 1.5 }}>Reason: {selected.rejectionReason}</Alert>
                     )}
                   </Box>
                 </>
@@ -385,15 +397,16 @@ export default function AdminKycReview() {
             </Stack>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Close</Button>
+
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setDialogOpen(false)} sx={{ textTransform: 'none', color: '#6b7280' }}>Close</Button>
           {selected?.status === 'pending' && (
             <Button
               variant="contained"
               onClick={handleSubmitReview}
               disabled={submitting}
               startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : null}
-              sx={{ bgcolor: '#111111', '&:hover': { bgcolor: '#000000' } }}
+              sx={{ bgcolor: '#111827', borderRadius: 1.5, textTransform: 'none', fontWeight: 700, '&:hover': { bgcolor: '#1f2937' } }}
             >
               {submitting ? 'Saving…' : 'Submit Decision'}
             </Button>

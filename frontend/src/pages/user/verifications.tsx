@@ -28,6 +28,7 @@ interface KycRecord {
   submissionCount: number
   createdAt: string
   reviewedAt?: string
+  businessRegImage?: string | null
 }
 
 interface FileField {
@@ -170,6 +171,25 @@ export default function KycVerificationPage() {
     }
   }
 
+  const [bizRegFile, setBizRegFile] = useState<string | null>(null)
+  const [bizRegUploading, setBizRegUploading] = useState(false)
+  const [bizRegSuccess, setBizRegSuccess] = useState(false)
+  const bizRegRef = useRef<HTMLInputElement | null>(null)
+
+  const handleBizRegUpload = async () => {
+    if (!bizRegFile) return
+    setBizRegUploading(true)
+    try {
+      await api.patch('/kyc/add-business-reg', { businessRegImage: bizRegFile })
+      setBizRegSuccess(true)
+      setExistingKyc(prev => prev ? { ...prev, businessRegImage: bizRegFile } : prev)
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Upload failed.')
+    } finally {
+      setBizRegUploading(false)
+    }
+  }
+
   const canResubmit = !existingKyc || existingKyc.status === 'rejected'
   const showForm = canResubmit && !success
 
@@ -198,6 +218,48 @@ export default function KycVerificationPage() {
 
         {/* Current status banner */}
         {existingKyc && <StatusBanner kyc={existingKyc} />}
+
+        {/* Business Registration upload — shown when approved but no biz reg yet */}
+        {existingKyc?.status === 'approved' && !existingKyc.businessRegImage && !bizRegSuccess && (
+          <Paper elevation={0} sx={{ border: '1px solid #e5e7eb', borderRadius: 3, p: 3, mb: 3 }}>
+            <Typography fontWeight={700} mb={0.5}>Add Business Registration Certificate</Typography>
+            <Typography variant="body2" color="text.secondary" mb={2}>
+              Uploading your business registration boosts your credit score by <strong>+15 pts</strong>, increasing investor trust.
+            </Typography>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              style={{ display: 'none' }}
+              ref={bizRegRef}
+              onChange={async e => {
+                const file = e.target.files?.[0]
+                if (file) setBizRegFile(await fileToBase64(file))
+              }}
+            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <Button variant="outlined" size="small" startIcon={<UploadFileIcon />}
+                onClick={() => bizRegRef.current?.click()}
+                sx={{ textTransform: 'none', borderRadius: 2, borderColor: '#0a1940', color: '#0a1940' }}>
+                {bizRegFile ? 'Change File' : 'Choose File'}
+              </Button>
+              {bizRegFile && (
+                <Button variant="contained" size="small" onClick={handleBizRegUpload} disabled={bizRegUploading}
+                  sx={{ textTransform: 'none', borderRadius: 2, bgcolor: '#0a1940', '&:hover': { bgcolor: '#000' } }}>
+                  {bizRegUploading ? 'Uploading…' : 'Upload & Save'}
+                </Button>
+              )}
+              {bizRegFile && (
+                <Typography variant="caption" color="text.secondary">File selected ✓</Typography>
+              )}
+            </Box>
+          </Paper>
+        )}
+
+        {existingKyc?.status === 'approved' && (bizRegSuccess || existingKyc.businessRegImage) && (
+          <Alert icon={<CheckCircleIcon />} severity="success" sx={{ mb: 3 }}>
+            Business registration certificate uploaded. Your credit score has been updated.
+          </Alert>
+        )}
 
         {/* Success state after submission */}
         {success && (

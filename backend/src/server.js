@@ -18,6 +18,7 @@ const paymentRoutes = require('./routes/paymentRoutes')
 const adminRoutes = require('./routes/adminRoutes')
 const kycRoutes = require('./routes/kycRoutes')
 const commentRoutes = require('./routes/commentRoutes')
+const uploadRoutes = require('./routes/uploadRoutes')
 const { errorHandler } = require('./middleware/errorHandler')
 
 const app = express()
@@ -50,6 +51,9 @@ app.use(
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
+// Serve uploaded files
+app.use('/uploads', express.static(require('path').join(__dirname, '../uploads')))
+
 // Compression
 app.use(compression())
 
@@ -62,6 +66,7 @@ app.use('/api/payments', paymentRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/kyc', kycRoutes)
 app.use('/api/comments', commentRoutes)
+app.use('/api/upload', uploadRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {
