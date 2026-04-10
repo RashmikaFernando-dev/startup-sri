@@ -2,13 +2,17 @@ import { Box, Typography, Button } from '@mui/material'
 import { useRouter } from 'next/router'
 import ExploreIcon from '@mui/icons-material/Explore'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
+import PersonIcon from '@mui/icons-material/Person'
+import SettingsIcon from '@mui/icons-material/Settings'
 
 const NAV = [
-  { key: 'projects',  label: 'Explore Projects', icon: <ExploreIcon fontSize="small" />,             href: '/user/projects'  },
+  { key: 'projects',  label: 'Explore Projects', icon: <ExploreIcon fontSize="small" />,              href: '/user/projects'  },
   { key: 'portfolio', label: 'My Portfolio',      icon: <AccountBalanceWalletIcon fontSize="small" />, href: '/user/portfolio' },
+  { key: 'profile',   label: 'Profile',           icon: <PersonIcon fontSize="small" />,               href: '/user/profile'   },
+  { key: 'settings',  label: 'Settings',          icon: <SettingsIcon fontSize="small" />,             href: '/user/profile'   },
 ]
 
-export default function InvestorSidebar({ active }: { active: 'projects' | 'portfolio' }) {
+export default function InvestorSidebar({ active }: { active: 'projects' | 'portfolio' | 'profile' | 'settings' }) {
   const router = useRouter()
 
   return (

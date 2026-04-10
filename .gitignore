@@ -51,6 +51,13 @@ next-env.d.ts
 *.pem
 Thumbs.db
 
+# Uploaded files
+backend/uploads/
+*.pdf
+
+# Logs
+backend/logs/
+
 # IDE
 .vscode/
 .idea/

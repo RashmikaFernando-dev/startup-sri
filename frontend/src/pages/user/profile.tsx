@@ -90,7 +90,7 @@ export default function ProfilePage() {
           user={user}
           profileImage={profileImage}
           onLogout={handleLogout}
-          onBack={() => router.push('/user/dashboard')}
+          onBack={() => router.push(user?.role === 'investor' ? '/user/projects' : '/user/dashboard')}
           backLabel="Profile"
         />
 
