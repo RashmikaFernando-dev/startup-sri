@@ -1,7 +1,9 @@
 const express = require('express')
 const router = express.Router()
 const KycVerification = require('../models/KycVerification')
+const User = require('../models/User')
 const { protect, authorize } = require('../middleware/auth')
+const { sendKycApprovedEmail, sendKycRejectedEmail } = require('../utils/emailService')
 
 const entrepreneur = [protect, authorize('entrepreneur')]
 const admin = [protect, authorize('admin')]
@@ -107,6 +109,21 @@ router.put('/admin/:id/review', admin, async (req, res) => {
       reviewedBy: req.user.id, reviewedAt: new Date(),
     })
     await kyc.save()
+
+    // Send email notification to the user
+    try {
+      const user = await User.findById(kyc.user).select('email firstName')
+      if (user) {
+        if (status === 'approved') {
+          await sendKycApprovedEmail(user.email, user.firstName)
+        } else {
+          await sendKycRejectedEmail(user.email, user.firstName, rejectionReason)
+        }
+      }
+    } catch (emailErr) {
+      console.error('Failed to send KYC email:', emailErr.message)
+    }
+
     res.json({ success: true, data: kyc })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })

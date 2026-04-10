@@ -2,7 +2,7 @@ const Project = require('../models/Project')
 const User = require('../models/User')
 const KycVerification = require('../models/KycVerification')
 const Comment = require('../models/Comment')
-const { sendProjectApprovalEmail } = require('../utils/emailService')
+const { sendProjectApprovalEmail, sendProjectRejectionEmail } = require('../utils/emailService')
 const computeCreditScore = require('../utils/creditScore')
 
 // @desc    Get all projects
@@ -304,15 +304,18 @@ const updateProjectStatus = async (req, res, next) => {
     }
     await project.save()
 
-    // Send email notification to the entrepreneur
     if (status === 'approved') {
       try {
-        await sendProjectApprovalEmail(
-          project.entrepreneur.email,
-          project.title
-        )
+        await sendProjectApprovalEmail(project.entrepreneur.email, project.title)
       } catch (emailErr) {
         console.error('Failed to send approval email:', emailErr.message)
+      }
+    }
+    if (status === 'rejected') {
+      try {
+        await sendProjectRejectionEmail(project.entrepreneur.email, project.title, rejectionReason)
+      } catch (emailErr) {
+        console.error('Failed to send rejection email:', emailErr.message)
       }
     }
 

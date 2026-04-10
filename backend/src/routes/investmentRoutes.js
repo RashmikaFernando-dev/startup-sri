@@ -2,6 +2,8 @@ const express = require('express')
 const { protect } = require('../middleware/auth')
 const Investment = require('../models/Investment')
 const Project = require('../models/Project')
+const User = require('../models/User')
+const { sendInvestmentReceivedEmail, sendRepaymentOverdueEmail } = require('../utils/emailService')
 
 const router = express.Router()
 
@@ -63,6 +65,16 @@ router.post('/', protect, async (req, res, next) => {
       await investment.save()
     }
 
+    // Notify entrepreneur of new investment
+    try {
+      const entrepreneur = await User.findById(project.entrepreneur).select('email')
+      if (entrepreneur?.email) {
+        await sendInvestmentReceivedEmail(entrepreneur.email, project.title, parsedAmount)
+      }
+    } catch (emailErr) {
+      console.error('Failed to send investment email:', emailErr.message)
+    }
+
     res.status(201).json({ success: true, data: investment })
   } catch (err) {
     next(err)
@@ -119,6 +131,22 @@ router.patch('/:id/repayment/:index', protect, async (req, res, next) => {
     investment.repaymentSchedule[idx].paidDate = new Date()
     investment.markModified('repaymentSchedule')
     await investment.save()
+
+    // Notify entrepreneur of any remaining overdue instalments
+    try {
+      const now = new Date()
+      const nextOverdue = investment.repaymentSchedule.find(
+        r => r.status !== 'paid' && new Date(r.dueDate) < now
+      )
+      if (nextOverdue) {
+        const project = await Project.findById(investment.project).populate('entrepreneur', 'email')
+        if (project?.entrepreneur?.email) {
+          await sendRepaymentOverdueEmail(project.entrepreneur.email, project.title, nextOverdue.amount, nextOverdue.dueDate)
+        }
+      }
+    } catch (emailErr) {
+      console.error('Failed to send overdue email:', emailErr.message)
+    }
 
     res.json({ success: true, data: investment })
   } catch (err) {
