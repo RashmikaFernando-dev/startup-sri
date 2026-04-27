@@ -48,19 +48,35 @@ router.post('/notify', async (req, res) => {
       .toUpperCase()
 
     if (expectedSig !== md5sig) {
+      console.error(`[PayHere] Invalid signature for order ${order_id}`)
       return res.status(400).send('Invalid signature')
     }
 
-    // status_code 2 = successful payment
-    if (status_code === '2') {
-      await Investment.findOneAndUpdate(
-        { paymentIntentId: order_id },
-        { status: 'completed' }
-      )
+    const statusMap = {
+      '2': 'completed',   // success
+      '0': 'pending',     // pending
+      '-1': 'cancelled',  // cancelled
+      '-2': 'cancelled',  // failed
+      '-3': 'cancelled',  // chargedback
+    }
+
+    const newStatus = statusMap[status_code] || 'cancelled'
+
+    const investment = await Investment.findOneAndUpdate(
+      { paymentIntentId: order_id },
+      { status: newStatus },
+      { new: true }
+    )
+
+    if (investment) {
+      console.log(`[PayHere] Order ${order_id} -> ${newStatus} (status_code: ${status_code})`)
+    } else {
+      console.warn(`[PayHere] No investment found for order ${order_id}`)
     }
 
     res.sendStatus(200)
   } catch (err) {
+    console.error('[PayHere] Notify error:', err.message)
     res.sendStatus(500)
   }
 })

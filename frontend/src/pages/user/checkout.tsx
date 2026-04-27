@@ -22,6 +22,8 @@ import PaymentIcon from '@mui/icons-material/Payment'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import PieChartIcon from '@mui/icons-material/PieChart'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
+import jsPDF from 'jspdf'
 
 // Extend window for PayHere SDK
 declare global {
@@ -38,6 +40,7 @@ declare global {
 type PayStatus = 'idle' | 'processing' | 'success' | 'cancelled' | 'error'
 
 const MERCHANT_ID = process.env.NEXT_PUBLIC_PAYHERE_MERCHANT_ID || '1234267'
+const NOTIFY_URL = process.env.NEXT_PUBLIC_PAYHERE_NOTIFY_URL || 'http://localhost:5000/api/payments/notify'
 
 export default function Checkout() {
   const router = useRouter()
@@ -48,6 +51,7 @@ export default function Checkout() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const [payStatus, setPayStatus] = useState<PayStatus>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  const [investmentData, setInvestmentData] = useState<any>(null)
 
   // Stable order ID for this checkout session
   const [orderId] = useState(
@@ -115,6 +119,7 @@ export default function Checkout() {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message || 'Failed to record investment')
+    setInvestmentData(data.data)
     return data
   }
 
@@ -179,7 +184,7 @@ export default function Checkout() {
         merchant_id: MERCHANT_ID,
         return_url: `${window.location.origin}/user/projects`,
         cancel_url: `${window.location.origin}/user/projects`,
-        notify_url: 'https://underage-peeringly-vincent.ngrok-free.dev/api/payments/notify',
+        notify_url: NOTIFY_URL,
         order_id: orderId,
         items: `Investment: ${projectTitle}`,
         amount: parsedAmount.toFixed(2),
@@ -208,6 +213,135 @@ export default function Checkout() {
     fundingType === 'microloan' && interestRate && duration
       ? parsedAmount * (1 + (parseFloat(interestRate) / 100) * (parseFloat(duration) / 12))
       : null
+
+  const generateReceipt = () => {
+    const doc = new jsPDF()
+    const pageW = doc.internal.pageSize.getWidth()
+    const leftM = 20
+    const rightVal = pageW - 20
+    let y = 20
+
+    // Header
+    doc.setFillColor(10, 25, 64)
+    doc.rect(0, 0, pageW, 48, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(22)
+    doc.setFont('helvetica', 'bold')
+    doc.text('StartupSri', leftM, 22)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Investment Receipt', leftM, 32)
+    doc.setFontSize(9)
+    doc.text('www.startupsri.lk', leftM, 40)
+
+    // Receipt number on right
+    const receiptNo = investmentData?._id
+      ? `RCP-${investmentData._id.slice(-8).toUpperCase()}`
+      : `RCP-${orderId.slice(-8).toUpperCase()}`
+    doc.setFontSize(10)
+    doc.text(receiptNo, rightVal, 22, { align: 'right' })
+    doc.text(new Date().toLocaleDateString('en-LK', { year: 'numeric', month: 'long', day: 'numeric' }), rightVal, 32, { align: 'right' })
+
+    y = 62
+
+    // Investor info
+    doc.setTextColor(107, 114, 128)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('INVESTOR', leftM, y)
+    y += 7
+    doc.setTextColor(10, 25, 64)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Investor', leftM, y)
+    y += 6
+    doc.setFontSize(9)
+    doc.setTextColor(107, 114, 128)
+    doc.text(user?.email || '', leftM, y)
+
+    y += 16
+
+    // Divider
+    doc.setDrawColor(229, 231, 235)
+    doc.setLineWidth(0.5)
+    doc.line(leftM, y, rightVal, y)
+    y += 12
+
+    // Transaction details table
+    doc.setTextColor(107, 114, 128)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('TRANSACTION DETAILS', leftM, y)
+    y += 10
+
+    const addRow = (label: string, value: string, highlight = false) => {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      doc.setTextColor(107, 114, 128)
+      doc.text(label, leftM, y)
+      if (highlight) { doc.setTextColor(22, 163, 74) } else { doc.setTextColor(10, 25, 64) }
+      doc.setFont('helvetica', highlight ? 'bold' : 'normal')
+      doc.text(value, rightVal, y, { align: 'right' })
+      y += 8
+    }
+
+    addRow('Transaction ID', investmentData?.paymentIntentId || orderId)
+    addRow('Date & Time', new Date().toLocaleString('en-LK'))
+    addRow('Project', projectTitle || 'N/A')
+    addRow('Investment Type', fundingType === 'equity' ? 'Equity' : 'Microloan')
+
+    if (fundingType === 'microloan') {
+      addRow('Interest Rate', `${interestRate}% p.a.`)
+      addRow('Loan Duration', `${duration} months`)
+    }
+    if (fundingType === 'equity') {
+      addRow('Equity Offered', `${equityOffered}%`)
+    }
+
+    addRow('Payment Method', 'PayHere')
+    addRow('Status', 'Completed')
+
+    y += 4
+    doc.setDrawColor(229, 231, 235)
+    doc.line(leftM, y, rightVal, y)
+    y += 10
+
+    // Amount
+    doc.setFontSize(10)
+    doc.setTextColor(107, 114, 128)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Investment Amount', leftM, y)
+    doc.setFontSize(16)
+    doc.setTextColor(10, 25, 64)
+    doc.setFont('helvetica', 'bold')
+    doc.text(fmt(parsedAmount), rightVal, y, { align: 'right' })
+    y += 10
+
+    if (estimatedReturn) {
+      doc.setFontSize(10)
+      doc.setTextColor(107, 114, 128)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Estimated Total Return', leftM, y)
+      doc.setTextColor(22, 163, 74)
+      doc.setFont('helvetica', 'bold')
+      doc.text(fmt(Math.round(estimatedReturn)), rightVal, y, { align: 'right' })
+      y += 10
+    }
+
+    // Footer
+    y += 16
+    doc.setDrawColor(229, 231, 235)
+    doc.line(leftM, y, rightVal, y)
+    y += 10
+    doc.setFontSize(8)
+    doc.setTextColor(156, 163, 175)
+    doc.setFont('helvetica', 'normal')
+    doc.text('This is a computer-generated receipt and does not require a signature.', pageW / 2, y, { align: 'center' })
+    y += 5
+    doc.text('For queries, contact hello@startupsri.lk | +94 77 000 0000', pageW / 2, y, { align: 'center' })
+
+    doc.save(`StartupSri_Receipt_${receiptNo}.pdf`)
+  }
 
   return (
     <>
@@ -257,6 +391,20 @@ export default function Checkout() {
                 <strong>{projectTitle}</strong> has been recorded successfully.
               </Typography>
               <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <Button
+                  variant="contained"
+                  startIcon={<ReceiptLongIcon />}
+                  onClick={generateReceipt}
+                  sx={{
+                    bgcolor: '#16a34a',
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    '&:hover': { bgcolor: '#15803d' },
+                  }}
+                >
+                  Download Receipt
+                </Button>
                 <Button
                   variant="contained"
                   onClick={() => router.push(user?.role === 'entrepreneur' ? '/user/dashboard' : '/user/projects')}
