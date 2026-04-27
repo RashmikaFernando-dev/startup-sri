@@ -110,18 +110,21 @@ router.put('/admin/:id/review', admin, async (req, res) => {
     })
     await kyc.save()
 
-    // Send email notification to the user
-    try {
-      const user = await User.findById(kyc.user).select('email firstName')
-      if (user) {
+    // Update user's isVerified flag based on KYC decision
+    const user = await User.findById(kyc.user)
+    if (user) {
+      user.isVerified = status === 'approved'
+      await user.save()
+
+      try {
         if (status === 'approved') {
           await sendKycApprovedEmail(user.email, user.firstName)
         } else {
           await sendKycRejectedEmail(user.email, user.firstName, rejectionReason)
         }
+      } catch (emailErr) {
+        console.error('Failed to send KYC email:', emailErr.message)
       }
-    } catch (emailErr) {
-      console.error('Failed to send KYC email:', emailErr.message)
     }
 
     res.json({ success: true, data: kyc })
