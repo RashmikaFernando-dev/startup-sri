@@ -23,11 +23,11 @@ import InstagramIcon from '@mui/icons-material/Instagram'
 import api from '@/utils/api'
 
 
-const stats = [
-  { value: 'LKR 45M+', label: 'Total Funded' },
-  { value: '120+', label: 'Startups Funded' },
-  { value: '800+', label: 'Active Investors' },
-  { value: '94%', label: 'Success Rate' },
+const fallbackStats = [
+  { value: 'LKR 0', label: 'Total Funded' },
+  { value: '0', label: 'Startups Funded' },
+  { value: '0', label: 'Active Investors' },
+  { value: '0%', label: 'Success Rate' },
 ]
 
 const features = [
@@ -94,7 +94,6 @@ type ProjectCardItem = {
   target: number
   equity: string
   daysLeft: number
-  founder: string
   status: string
 }
 
@@ -140,6 +139,30 @@ export default function Home() {
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([])
   const [feedbackLoading, setFeedbackLoading] = useState(true)
   const [feedbackError, setFeedbackError] = useState('')
+  const [platformStats, setPlatformStats] = useState(fallbackStats)
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const res = await api.get('/stats/public')
+        const d = res.data?.data
+        if (d) {
+          const fmtAmount = (n: number) => {
+            if (n >= 1_000_000) return `LKR ${(n / 1_000_000).toFixed(1)}M+`
+            if (n >= 1_000) return `LKR ${(n / 1_000).toFixed(0)}K+`
+            return `LKR ${n.toLocaleString()}`
+          }
+          setPlatformStats([
+            { value: fmtAmount(d.totalFunded), label: 'Total Funded' },
+            { value: `${d.startupsFunded}+`, label: 'Startups Funded' },
+            { value: `${d.activeInvestors}+`, label: 'Active Investors' },
+            { value: `${d.successRate}%`, label: 'Success Rate' },
+          ])
+        }
+      } catch {}
+    }
+    loadStats()
+  }, [])
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -157,10 +180,6 @@ export default function Home() {
               ? Math.max(0, Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)))
               : 30
 
-            const founderName = project.entrepreneur
-              ? `${project.entrepreneur.firstName || ''} ${project.entrepreneur.lastName || ''}`.trim()
-              : 'Unknown Founder'
-
             return {
               id: project._id,
               name: project.title,
@@ -171,7 +190,6 @@ export default function Home() {
                 ? `${Number(project.equityOffered || 0)}%`
                 : `${Number(project.interestRate || 0)}% APR`,
               daysLeft,
-              founder: founderName || 'Unknown Founder',
               status: (project.status || 'active').charAt(0).toUpperCase() + (project.status || 'active').slice(1),
             }
           })
@@ -193,16 +211,16 @@ export default function Home() {
       setFeedbackError('')
 
       try {
-        const response = await api.get('/comments/latest')
-        const comments = Array.isArray(response.data?.data) ? response.data.data : []
+        const response = await api.get('/feedback/latest')
+        const items = Array.isArray(response.data?.data) ? response.data.data : []
 
-        const mapped: FeedbackItem[] = comments.map((comment: any, index: number) => {
-          const commenterName = String(comment.userName || 'Anonymous User').trim() || 'Anonymous User'
+        const mapped: FeedbackItem[] = items.map((item: any, index: number) => {
+          const commenterName = String(item.userName || 'Anonymous User').trim() || 'Anonymous User'
           const avatarLetter = commenterName.charAt(0).toUpperCase() || 'A'
 
           return {
-            id: String(comment._id),
-            quote: String(comment.text || ''),
+            id: String(item._id),
+            quote: String(item.text || ''),
             name: commenterName,
             avatar: avatarLetter,
             color: feedbackColors[index % feedbackColors.length],
@@ -346,7 +364,7 @@ export default function Home() {
             p: { xs: 2.2, md: 3.2 },
             border: '1px solid rgba(183,187,255,0.2)',
           }}>
-            {stats.map((s) => (
+            {platformStats.map((s) => (
               <Grid item xs={6} md={3} key={s.label}>
                 <Box sx={{ textAlign: 'center' }}>
                   <Typography variant="h4" sx={{ fontWeight: 800, color: 'white', fontSize: { xs: '1.8rem', md: '2.2rem' } }}>
@@ -531,7 +549,6 @@ export default function Home() {
                         />
                       </Box>
                       <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>{s.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">by {s.founder}</Typography>
                       <Box sx={{ mt: 2.5, mb: 1 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.8 }}>
                           <Typography variant="body2" color="text.secondary">

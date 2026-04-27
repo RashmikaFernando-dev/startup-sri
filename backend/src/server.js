@@ -18,7 +18,9 @@ const paymentRoutes = require('./routes/paymentRoutes')
 const adminRoutes = require('./routes/adminRoutes')
 const kycRoutes = require('./routes/kycRoutes')
 const commentRoutes = require('./routes/commentRoutes')
+const feedbackRoutes = require('./routes/feedbackRoutes')
 const uploadRoutes = require('./routes/uploadRoutes')
+const statsRoutes = require('./routes/statsRoutes')
 const { errorHandler } = require('./middleware/errorHandler')
 
 const app = express()
@@ -66,7 +68,9 @@ app.use('/api/payments', paymentRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/kyc', kycRoutes)
 app.use('/api/comments', commentRoutes)
+app.use('/api/feedback', feedbackRoutes)
 app.use('/api/upload', uploadRoutes)
+app.use('/api/stats', statsRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {
