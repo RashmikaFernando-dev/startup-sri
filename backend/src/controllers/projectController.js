@@ -2,6 +2,7 @@ const Project = require('../models/Project')
 const User = require('../models/User')
 const KycVerification = require('../models/KycVerification')
 const Comment = require('../models/Comment')
+const QRCode = require('qrcode')
 const { sendProjectApprovalEmail, sendProjectRejectionEmail } = require('../utils/emailService')
 const computeCreditScore = require('../utils/creditScore')
 
@@ -26,11 +27,29 @@ const getProjects = async (req, res, next) => {
     const kycList = await KycVerification.find({ user: { $in: entrepreneurIds } }).lean()
     const kycMap = Object.fromEntries(kycList.map(k => [k.user.toString(), k]))
 
-    const data = projects.map(p => {
+    const data = []
+    const userScoreUpdates = []
+
+    for (const p of projects) {
       const kyc = kycMap[p.entrepreneur?._id?.toString()]
       const { score, breakdown } = computeCreditScore(p, kyc)
-      return { ...p.toObject(), creditScore: score, creditBreakdown: breakdown }
-    })
+      data.push({ ...p.toObject(), creditScore: score, creditBreakdown: breakdown })
+
+      if (p.entrepreneur?._id) {
+        userScoreUpdates.push({
+          updateOne: {
+            filter: { _id: p.entrepreneur._id },
+            update: { $set: { creditScore: score } },
+          },
+        })
+      }
+    }
+
+    if (userScoreUpdates.length) {
+      User.bulkWrite(userScoreUpdates).catch(err =>
+        console.error('Failed to persist credit scores:', err.message)
+      )
+    }
 
     res.status(200).json({ success: true, count: data.length, data })
   } catch (error) {
@@ -54,6 +73,10 @@ const getProject = async (req, res, next) => {
     const kyc = await KycVerification.findOne({ user: project.entrepreneur._id }).lean()
     const { score, breakdown } = computeCreditScore(project, kyc)
     const data = { ...project.toObject(), creditScore: score, creditBreakdown: breakdown }
+
+    User.findByIdAndUpdate(project.entrepreneur._id, { creditScore: score }).catch(err =>
+      console.error('Failed to persist credit score:', err.message)
+    )
 
     res.status(200).json({ success: true, data })
   } catch (error) {
@@ -302,6 +325,17 @@ const updateProjectStatus = async (req, res, next) => {
     if (status === 'rejected' && rejectionReason) {
       project.rejectionReason = rejectionReason
     }
+
+    if (status === 'approved' && !project.proposalId) {
+      const year = new Date().getFullYear()
+      const count = await Project.countDocuments({ proposalId: { $regex: `^PROP-${year}-` } })
+      const seq = String(count + 1).padStart(5, '0')
+      project.proposalId = `PROP-${year}-${seq}`
+
+      const verifyUrl = `http://localhost:3000/verify/${project.proposalId}`
+      project.qrCode = await QRCode.toDataURL(verifyUrl, { width: 300, margin: 2 })
+    }
+
     await project.save()
 
     if (status === 'approved') {
@@ -325,6 +359,44 @@ const updateProjectStatus = async (req, res, next) => {
   }
 }
 
+// @desc    Verify project by proposal ID
+// @route   GET /api/projects/verify/:proposalId
+// @access  Public
+const getProjectByProposalId = async (req, res, next) => {
+  try {
+    const project = await Project.findOne({ proposalId: req.params.proposalId })
+      .populate('entrepreneur', 'firstName lastName email')
+
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Proposal not found' })
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        proposalId: project.proposalId,
+        title: project.title,
+        description: project.description,
+        businessName: project.businessName,
+        businessType: project.businessType,
+        category: project.category,
+        fundingType: project.fundingType,
+        fundingGoal: project.fundingGoal,
+        status: project.status,
+        qrCode: project.qrCode,
+        entrepreneur: {
+          firstName: project.entrepreneur?.firstName,
+          lastName: project.entrepreneur?.lastName,
+        },
+        verifiedAt: project.updatedAt,
+        createdAt: project.createdAt,
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 module.exports = {
   getProjects,
   getProject,
@@ -335,4 +407,5 @@ module.exports = {
   getProjectComments,
   addProjectComment,
   getLatestComments,
+  getProjectByProposalId,
 }

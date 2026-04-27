@@ -4,6 +4,8 @@ const Investment = require('../models/Investment')
 const Project = require('../models/Project')
 const User = require('../models/User')
 const { sendInvestmentReceivedEmail, sendRepaymentOverdueEmail } = require('../utils/emailService')
+const KycVerification = require('../models/KycVerification')
+const computeCreditScore = require('../utils/creditScore')
 
 const router = express.Router()
 
@@ -29,21 +31,34 @@ router.post('/', protect, async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Project is not currently accepting investments' })
     }
 
-    // Create the investment record (status = completed after payment)
+    const paymentId = orderId || `MANUAL_${Date.now()}`
+
+    // Prevent duplicate investment for the same order
+    const existing = await Investment.findOne({ paymentIntentId: paymentId })
+    if (existing) {
+      return res.status(200).json({ success: true, data: existing, duplicate: true })
+    }
+
     const investment = await Investment.create({
       investor: req.user._id,
       project: projectId,
       amount: parsedAmount,
       type: project.fundingType === 'equity' ? 'equity' : 'loan',
       status: 'completed',
-      paymentIntentId: orderId || `MANUAL_${Date.now()}`,
+      paymentIntentId: paymentId,
     })
 
-    // Update project's current funding
+    // Update project's current funding and track investor
     project.currentFunding = (project.currentFunding || 0) + parsedAmount
     if (project.currentFunding >= project.fundingGoal) {
       project.status = 'funded'
     }
+    project.investors.push({
+      user: req.user._id,
+      amount: parsedAmount,
+      type: project.fundingType === 'equity' ? 'equity' : 'loan',
+      date: new Date(),
+    })
     await project.save()
 
     // Generate repayment schedule for microloan investments
@@ -63,6 +78,15 @@ router.post('/', protect, async (req, res, next) => {
       }
       investment.repaymentSchedule = schedule
       await investment.save()
+    }
+
+    // Recompute and persist entrepreneur's credit score
+    try {
+      const kyc = await KycVerification.findOne({ user: project.entrepreneur }).lean()
+      const { score } = computeCreditScore(project, kyc)
+      await User.findByIdAndUpdate(project.entrepreneur, { creditScore: score })
+    } catch (scoreErr) {
+      console.error('Failed to update credit score:', scoreErr.message)
     }
 
     // Notify entrepreneur of new investment
@@ -85,7 +109,7 @@ router.post('/', protect, async (req, res, next) => {
 router.get('/my', protect, async (req, res, next) => {
   try {
     const investments = await Investment.find({ investor: req.user._id })
-      .populate('project', 'title category fundingType fundingGoal currentFunding status')
+      .populate('project', 'title category fundingType fundingGoal currentFunding status interestRate duration equityOffered')
       .sort({ createdAt: -1 })
     res.json({ success: true, data: investments })
   } catch (err) {
