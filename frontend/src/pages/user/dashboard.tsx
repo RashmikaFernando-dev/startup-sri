@@ -36,6 +36,18 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import PaymentsIcon from '@mui/icons-material/Payments'
 import UserNavbar from '@/components/user/UserNavbar'
 import EntrepreneurSidebar from '@/components/user/EntrepreneurSidebar'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+import { Bar, Doughnut } from 'react-chartjs-2'
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
 const STATUS_COLOR: Record<string, 'default' | 'warning' | 'success' | 'error' | 'info' | 'primary'> = {
   pending: 'warning',
@@ -168,6 +180,7 @@ export default function Dashboard() {
   const handleSidebarClick = (key: string) => {
     if (key === 'apply') { router.push('/user/submit-project'); return }
     if (key === 'profile' || key === 'settings') { router.push('/user/profile'); return }
+    if (key === 'feedback') { router.push('/user/feedback'); return }
     if (key === 'repayments') fetchRepayments()
     setActiveTab(key)
   }
@@ -213,6 +226,29 @@ export default function Dashboard() {
                     { label: 'Pending Review',   value: pendingCount,         icon: <HourglassEmptyIcon sx={{ fontSize: 20, color: '#f59e0b' }} />, iconBg: '#fef3c7' },
                   ]
 
+                  const statusCounts: Record<string, number> = {}
+                  projects.forEach(p => { statusCounts[p.status] = (statusCounts[p.status] || 0) + 1 })
+                  const statusLabels = Object.keys(statusCounts).map(s => s.charAt(0).toUpperCase() + s.slice(1))
+                  const statusColors: Record<string, string> = { pending: '#f59e0b', approved: '#10b981', rejected: '#ef4444', active: '#3b82f6', funded: '#8b5cf6', completed: '#6b7280' }
+
+                  const barChartData = {
+                    labels: projects.map(p => p.title.length > 18 ? p.title.slice(0, 18) + '…' : p.title),
+                    datasets: [
+                      { label: 'Goal', data: projects.map(p => p.fundingGoal), backgroundColor: 'rgba(99,102,241,0.6)', borderRadius: 4 },
+                      { label: 'Raised', data: projects.map(p => p.currentFunding || 0), backgroundColor: 'rgba(16,185,129,0.7)', borderRadius: 4 },
+                    ],
+                  }
+
+                  const doughnutData = {
+                    labels: statusLabels,
+                    datasets: [{
+                      data: Object.values(statusCounts),
+                      backgroundColor: Object.keys(statusCounts).map(s => statusColors[s] || '#9ca3af'),
+                      borderWidth: 0,
+                      hoverOffset: 6,
+                    }],
+                  }
+
                   return (
                     <Box sx={{ mb: 3 }}>
                       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4,1fr)' }, gap: 2, mb: 2.5 }}>
@@ -243,6 +279,32 @@ export default function Dashboard() {
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
                           <Typography sx={{ fontSize: 12, color: '#6b7280' }}>{fmt(totalRaised)} raised</Typography>
                           <Typography sx={{ fontSize: 12, color: '#6b7280' }}>Goal: {fmt(totalGoal)}</Typography>
+                        </Box>
+                      </Box>
+
+                      {/* Charts */}
+                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '3fr 2fr' }, gap: 2.5, mt: 2.5 }}>
+                        <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 2.5, p: 2.5 }}>
+                          <Typography sx={{ fontWeight: 700, fontSize: 14, color: '#0a1940', mb: 2 }}>Funding by Project</Typography>
+                          <Box sx={{ height: 220 }}>
+                            <Bar data={barChartData} options={{
+                              responsive: true, maintainAspectRatio: false,
+                              plugins: { legend: { position: 'top', labels: { font: { size: 11 }, usePointStyle: true, pointStyle: 'circle' } } },
+                              scales: {
+                                y: { beginAtZero: true, ticks: { callback: (v) => `${(Number(v) / 1000).toFixed(0)}K`, font: { size: 10 } }, grid: { color: '#f3f4f6' } },
+                                x: { ticks: { font: { size: 10 } }, grid: { display: false } },
+                              },
+                            }} />
+                          </Box>
+                        </Box>
+                        <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 2.5, p: 2.5 }}>
+                          <Typography sx={{ fontWeight: 700, fontSize: 14, color: '#0a1940', mb: 2 }}>Project Status</Typography>
+                          <Box sx={{ maxWidth: 200, mx: 'auto' }}>
+                            <Doughnut data={doughnutData} options={{
+                              responsive: true, maintainAspectRatio: true, cutout: '65%',
+                              plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyle: 'circle' } } },
+                            }} />
+                          </Box>
                         </Box>
                       </Box>
                     </Box>

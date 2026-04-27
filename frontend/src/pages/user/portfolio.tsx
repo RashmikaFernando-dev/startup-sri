@@ -3,15 +3,29 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAppDispatch, useAppSelector } from '@/hooks/useTypedSelector'
 import { logout } from '@/redux/slices/authSlice'
-import { Box, Typography, LinearProgress, Chip, Alert, Snackbar, Collapse, IconButton } from '@mui/material'
+import { Box, Typography, LinearProgress, Chip, Alert, Snackbar, Collapse, IconButton, Button } from '@mui/material'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import FolderOpenIcon from '@mui/icons-material/FolderOpen'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
+import jsPDF from 'jspdf'
 import UserNavbar from '@/components/user/UserNavbar'
 import InvestorSidebar from '@/components/user/InvestorSidebar'
 import Footer from '@/components/layout/Footer'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+import { Doughnut, Bar } from 'react-chartjs-2'
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
 const fmt = (n: number) => `LKR ${n.toLocaleString()}`
 
@@ -36,13 +50,133 @@ function Badge({ label, status }: { label: string; status: string }) {
   )
 }
 
-function InvestmentCard({ inv }: { inv: any }) {
+function InvestmentCard({ inv, user }: { inv: any; user: any }) {
   const [open, setOpen] = useState(false)
   const p = inv.project
   const progress = p ? Math.min(Math.round(((p.currentFunding || 0) / p.fundingGoal) * 100), 100) : 0
   const schedule: any[] = inv.repaymentSchedule ?? []
   const paidAmt = schedule.filter(r => r.status === 'paid').reduce((s: number, r: any) => s + r.amount, 0)
   const totalAmt = schedule.reduce((s: number, r: any) => s + r.amount, 0)
+
+  const generateReceipt = () => {
+    const doc = new jsPDF()
+    const pageW = doc.internal.pageSize.getWidth()
+    const leftM = 20
+    const rightVal = pageW - 20
+    let y = 20
+
+    doc.setFillColor(10, 25, 64)
+    doc.rect(0, 0, pageW, 48, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(22)
+    doc.setFont('helvetica', 'bold')
+    doc.text('StartupSri', leftM, 22)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Investment Receipt', leftM, 32)
+    doc.setFontSize(9)
+    doc.text('www.startupsri.lk', leftM, 40)
+
+    const receiptNo = `RCP-${inv._id.slice(-8).toUpperCase()}`
+    doc.setFontSize(10)
+    doc.text(receiptNo, rightVal, 22, { align: 'right' })
+    doc.text(new Date(inv.createdAt).toLocaleDateString('en-LK', { year: 'numeric', month: 'long', day: 'numeric' }), rightVal, 32, { align: 'right' })
+
+    y = 62
+
+    doc.setTextColor(107, 114, 128)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('INVESTOR', leftM, y)
+    y += 7
+    doc.setTextColor(10, 25, 64)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Investor', leftM, y)
+    y += 6
+    doc.setFontSize(9)
+    doc.setTextColor(107, 114, 128)
+    doc.text(user?.email || '', leftM, y)
+
+    y += 16
+
+    doc.setDrawColor(229, 231, 235)
+    doc.setLineWidth(0.5)
+    doc.line(leftM, y, rightVal, y)
+    y += 12
+
+    doc.setTextColor(107, 114, 128)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('TRANSACTION DETAILS', leftM, y)
+    y += 10
+
+    const addRow = (label: string, value: string, highlight = false) => {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      doc.setTextColor(107, 114, 128)
+      doc.text(label, leftM, y)
+      if (highlight) { doc.setTextColor(22, 163, 74) } else { doc.setTextColor(10, 25, 64) }
+      doc.setFont('helvetica', highlight ? 'bold' : 'normal')
+      doc.text(value, rightVal, y, { align: 'right' })
+      y += 8
+    }
+
+    addRow('Transaction ID', inv.paymentIntentId || inv._id)
+    addRow('Date & Time', new Date(inv.createdAt).toLocaleString('en-LK'))
+    addRow('Project', p?.title || 'N/A')
+    addRow('Investment Type', inv.type === 'equity' ? 'Equity' : 'Microloan')
+
+    if (inv.type === 'loan') {
+      if (p?.interestRate) addRow('Interest Rate', `${p.interestRate}% p.a.`)
+      if (p?.duration) addRow('Loan Duration', `${p.duration} months`)
+    }
+    if (inv.type === 'equity' && p?.equityOffered) {
+      addRow('Equity Offered', `${p.equityOffered}%`)
+    }
+
+    addRow('Payment Method', 'PayHere')
+    addRow('Status', inv.status === 'completed' ? 'Completed' : inv.status)
+
+    y += 4
+    doc.setDrawColor(229, 231, 235)
+    doc.line(leftM, y, rightVal, y)
+    y += 10
+
+    doc.setFontSize(10)
+    doc.setTextColor(107, 114, 128)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Investment Amount', leftM, y)
+    doc.setFontSize(16)
+    doc.setTextColor(10, 25, 64)
+    doc.setFont('helvetica', 'bold')
+    doc.text(fmt(inv.amount), rightVal, y, { align: 'right' })
+    y += 10
+
+    if (inv.type === 'loan' && totalAmt > 0) {
+      doc.setFontSize(10)
+      doc.setTextColor(107, 114, 128)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Expected Total Return', leftM, y)
+      doc.setTextColor(22, 163, 74)
+      doc.setFont('helvetica', 'bold')
+      doc.text(fmt(totalAmt), rightVal, y, { align: 'right' })
+      y += 10
+    }
+
+    y += 16
+    doc.setDrawColor(229, 231, 235)
+    doc.line(leftM, y, rightVal, y)
+    y += 10
+    doc.setFontSize(8)
+    doc.setTextColor(156, 163, 175)
+    doc.setFont('helvetica', 'normal')
+    doc.text('This is a computer-generated receipt and does not require a signature.', pageW / 2, y, { align: 'center' })
+    y += 5
+    doc.text('For queries, contact hello@startupsri.lk | +94 77 000 0000', pageW / 2, y, { align: 'center' })
+
+    doc.save(`StartupSri_Receipt_${receiptNo}.pdf`)
+  }
 
   return (
     <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 3, overflow: 'hidden', '&:hover': { boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }, transition: 'box-shadow 0.2s' }}>
@@ -118,9 +252,30 @@ function InvestmentCard({ inv }: { inv: any }) {
           </Box>
         )}
 
-        <Typography sx={{ fontSize: 12, color: '#9ca3af', mt: 2 }}>
-          Invested on {new Date(inv.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+          <Typography sx={{ fontSize: 12, color: '#9ca3af' }}>
+            Invested on {new Date(inv.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+          </Typography>
+          <Button
+            size="small"
+            startIcon={<ReceiptLongIcon sx={{ fontSize: 16 }} />}
+            onClick={generateReceipt}
+            sx={{
+              textTransform: 'none',
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#16a34a',
+              borderColor: '#bbf7d0',
+              border: '1px solid #bbf7d0',
+              borderRadius: 2,
+              px: 1.5,
+              py: 0.5,
+              '&:hover': { bgcolor: '#f0fdf4', borderColor: '#16a34a' },
+            }}
+          >
+            Print Receipt
+          </Button>
+        </Box>
       </Box>
 
       {/* Repayment schedule table */}
@@ -238,6 +393,66 @@ export default function PortfolioDashboard() {
             ))}
           </Box>
 
+          {/* Charts */}
+          {investments.length > 0 && (() => {
+            const byType: Record<string, number> = {}
+            const byProject: Record<string, number> = {}
+            investments.forEach(inv => {
+              const t = inv.type === 'equity' ? 'Equity' : 'Microloan'
+              byType[t] = (byType[t] || 0) + inv.amount
+              const pName = inv.project?.title || 'Unknown'
+              byProject[pName] = (byProject[pName] || 0) + inv.amount
+            })
+
+            const typeChartData = {
+              labels: Object.keys(byType),
+              datasets: [{
+                data: Object.values(byType),
+                backgroundColor: ['#8b5cf6', '#3b82f6'],
+                borderWidth: 0,
+                hoverOffset: 6,
+              }],
+            }
+
+            const projectNames = Object.keys(byProject).map(n => n.length > 16 ? n.slice(0, 16) + '…' : n)
+            const projectBarData = {
+              labels: projectNames,
+              datasets: [{
+                label: 'Invested (LKR)',
+                data: Object.values(byProject),
+                backgroundColor: 'rgba(99,102,241,0.7)',
+                borderRadius: 4,
+              }],
+            }
+
+            return (
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '3fr 2fr' }, gap: 2.5, mb: 4 }}>
+                <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 2.5, p: 2.5 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: 14, color: '#0a1940', mb: 2 }}>Investment by Project</Typography>
+                  <Box sx={{ height: 220 }}>
+                    <Bar data={projectBarData} options={{
+                      responsive: true, maintainAspectRatio: false,
+                      plugins: { legend: { display: false } },
+                      scales: {
+                        y: { beginAtZero: true, ticks: { callback: (v) => `${(Number(v) / 1000).toFixed(0)}K`, font: { size: 10 } }, grid: { color: '#f3f4f6' } },
+                        x: { ticks: { font: { size: 10 } }, grid: { display: false } },
+                      },
+                    }} />
+                  </Box>
+                </Box>
+                <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 2.5, p: 2.5 }}>
+                  <Typography sx={{ fontWeight: 700, fontSize: 14, color: '#0a1940', mb: 2 }}>By Investment Type</Typography>
+                  <Box sx={{ maxWidth: 200, mx: 'auto' }}>
+                    <Doughnut data={typeChartData} options={{
+                      responsive: true, maintainAspectRatio: true, cutout: '65%',
+                      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyle: 'circle' } } },
+                    }} />
+                  </Box>
+                </Box>
+              </Box>
+            )
+          })()}
+
           {/* List */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography sx={{ fontWeight: 700, fontSize: 16, color: '#0a1940' }}>Investment History</Typography>
@@ -258,7 +473,7 @@ export default function PortfolioDashboard() {
             </Box>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-              {investments.map(inv => <InvestmentCard key={inv._id} inv={inv} />)}
+              {investments.map(inv => <InvestmentCard key={inv._id} inv={inv} user={user} />)}
             </Box>
           )}
           </Box>
