@@ -6,8 +6,10 @@ import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
+import RateReviewIcon from '@mui/icons-material/RateReview'
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
 
-export type AdminActiveKey = 'overview' | 'projects' | 'users' | 'kyc' | 'transactions'
+export type AdminActiveKey = 'overview' | 'projects' | 'users' | 'kyc' | 'transactions' | 'feedback' | 'notifications'
 
 const navSections = [
   {
@@ -23,6 +25,8 @@ const navSections = [
       { key: 'users' as AdminActiveKey,          label: 'Users',        icon: <PeopleIcon sx={{ fontSize: 18 }} />,        href: '/admin/users' },
       { key: 'kyc' as AdminActiveKey,            label: 'KYC Review',   icon: <VerifiedUserIcon sx={{ fontSize: 18 }} />,  href: '/admin/verifications' },
       { key: 'transactions' as AdminActiveKey,   label: 'Transactions', icon: <ReceiptLongIcon sx={{ fontSize: 18 }} />,   href: '/admin/transactions' },
+      { key: 'feedback' as AdminActiveKey,       label: 'Feedback',       icon: <RateReviewIcon sx={{ fontSize: 18 }} />,            href: '/admin/feedback'       },
+      { key: 'notifications' as AdminActiveKey, label: 'Notifications',   icon: <NotificationsNoneIcon sx={{ fontSize: 18 }} />,    href: '/admin/notifications'  },
     ],
   },
 ]
