@@ -1,7 +1,11 @@
-import { Box, Typography, Avatar, IconButton, Tooltip, Chip } from '@mui/material'
+import { useState, useEffect } from 'react'
+import { Box, Typography, Avatar, IconButton, Tooltip, Chip, Badge } from '@mui/material'
 import { useRouter } from 'next/router'
 import LogoutIcon from '@mui/icons-material/Logout'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
 interface UserNavbarProps {
   user: { firstName?: string; lastName?: string } | null
@@ -14,6 +18,24 @@ interface UserNavbarProps {
 
 export default function UserNavbar({ user, profileImage, onLogout, onBack, backLabel }: UserNavbarProps) {
   const router = useRouter()
+  const [unread, setUnread] = useState(0)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+    const fetchCount = async () => {
+      try {
+        const res = await fetch(`${API}/notifications/unread-count`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (data.success) setUnread(data.count)
+      } catch {}
+    }
+    fetchCount()
+    const interval = setInterval(fetchCount, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <Box sx={{
@@ -64,6 +86,14 @@ export default function UserNavbar({ user, profileImage, onLogout, onBack, backL
 
       {/* Right side */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Tooltip title="Notifications">
+          <IconButton size="small" onClick={() => router.push('/user/notifications')} sx={{ color: '#6b7280' }}>
+            <Badge badgeContent={unread > 0 ? unread : undefined} color="error" max={9}
+              sx={{ '& .MuiBadge-badge': { fontSize: 10, minWidth: 16, height: 16 } }}>
+              <NotificationsNoneIcon fontSize="small" />
+            </Badge>
+          </IconButton>
+        </Tooltip>
         <Avatar
           src={profileImage || undefined}
           sx={{ bgcolor: '#0a1940', width: 34, height: 34, fontSize: 14, fontWeight: 700 }}

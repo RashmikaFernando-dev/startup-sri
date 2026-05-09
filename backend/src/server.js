@@ -21,6 +21,7 @@ const commentRoutes = require('./routes/commentRoutes')
 const feedbackRoutes = require('./routes/feedbackRoutes')
 const uploadRoutes = require('./routes/uploadRoutes')
 const statsRoutes = require('./routes/statsRoutes')
+const notificationRoutes = require('./routes/notificationRoutes')
 const { errorHandler } = require('./middleware/errorHandler')
 
 const app = express()
@@ -36,7 +37,7 @@ app.use(mongoSanitize())
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 500,
   message: 'Too many requests from this IP, please try again later.',
 })
 app.use('/api/', limiter)
@@ -71,6 +72,7 @@ app.use('/api/comments', commentRoutes)
 app.use('/api/feedback', feedbackRoutes)
 app.use('/api/upload', uploadRoutes)
 app.use('/api/stats', statsRoutes)
+app.use('/api/notifications', notificationRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {

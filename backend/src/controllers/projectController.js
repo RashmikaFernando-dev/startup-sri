@@ -5,6 +5,8 @@ const Comment = require('../models/Comment')
 const QRCode = require('qrcode')
 const { sendProjectApprovalEmail, sendProjectRejectionEmail } = require('../utils/emailService')
 const computeCreditScore = require('../utils/creditScore')
+const Notification = require('../models/Notification')
+const notifyAdmins = require('../utils/notifyAdmins')
 
 // @desc    Get all projects
 // @route   GET /api/projects
@@ -103,6 +105,13 @@ const createProject = async (req, res, next) => {
 
     req.body.entrepreneur = req.user.id
     const project = await Project.create(req.body)
+
+    // Notify all admins a new project needs review
+    notifyAdmins(
+      `New project "${project.title}" was submitted by ${req.user.firstName || ''} ${req.user.lastName || ''} and is awaiting your review.`,
+      'info'
+    )
+
     res.status(201).json({ success: true, data: project })
   } catch (error) {
     next(error)
@@ -344,6 +353,11 @@ const updateProjectStatus = async (req, res, next) => {
       } catch (emailErr) {
         console.error('Failed to send approval email:', emailErr.message)
       }
+      Notification.create({
+        user: project.entrepreneur._id,
+        message: `Your project "${project.title}" has been approved and is now live.`,
+        type: 'success',
+      }).catch(() => {})
     }
     if (status === 'rejected') {
       try {
@@ -351,6 +365,11 @@ const updateProjectStatus = async (req, res, next) => {
       } catch (emailErr) {
         console.error('Failed to send rejection email:', emailErr.message)
       }
+      Notification.create({
+        user: project.entrepreneur._id,
+        message: `Your project "${project.title}" was not approved. Reason: ${rejectionReason || 'See admin comments.'}`,
+        type: 'warning',
+      }).catch(() => {})
     }
 
     res.status(200).json({ success: true, data: project })

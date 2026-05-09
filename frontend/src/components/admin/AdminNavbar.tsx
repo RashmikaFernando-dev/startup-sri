@@ -1,5 +1,10 @@
-import { Box, Typography, Avatar, IconButton, Tooltip } from '@mui/material'
+import { useState, useEffect } from 'react'
+import { Box, Typography, Avatar, IconButton, Tooltip, Badge } from '@mui/material'
+import { useRouter } from 'next/router'
 import LogoutIcon from '@mui/icons-material/Logout'
+import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone'
+
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
 
 interface AdminNavbarProps {
   admin: { firstName?: string; lastName?: string } | null
@@ -9,7 +14,26 @@ interface AdminNavbarProps {
 }
 
 export default function AdminNavbar({ admin, onLogout, pageTitle, pageSubtitle }: AdminNavbarProps) {
+  const router = useRouter()
   const initials = `${admin?.firstName?.[0] ?? ''}${admin?.lastName?.[0] ?? ''}`
+  const [unread, setUnread] = useState(0)
+
+  useEffect(() => {
+    const token = localStorage.getItem('adminToken')
+    if (!token) return
+    const fetchCount = async () => {
+      try {
+        const res = await fetch(`${API}/notifications/unread-count`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (data.success) setUnread(data.count)
+      } catch {}
+    }
+    fetchCount()
+    const interval = setInterval(fetchCount, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <Box sx={{
@@ -40,8 +64,25 @@ export default function AdminNavbar({ admin, onLogout, pageTitle, pageSubtitle }
         )}
       </Box>
 
-      {/* Right – user info */}
+      {/* Right – bell + user info */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Tooltip title="Notifications">
+          <IconButton
+            size="small"
+            onClick={() => router.push('/admin/notifications')}
+            sx={{ color: '#6b7280', '&:hover': { color: '#111827' } }}
+          >
+            <Badge
+              badgeContent={unread > 0 ? unread : undefined}
+              color="error"
+              max={9}
+              sx={{ '& .MuiBadge-badge': { fontSize: 10, minWidth: 16, height: 16 } }}
+            >
+              <NotificationsNoneIcon fontSize="small" />
+            </Badge>
+          </IconButton>
+        </Tooltip>
+
         <Box sx={{ textAlign: 'right', display: { xs: 'none', sm: 'block' } }}>
           <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#111827', lineHeight: 1.2 }}>
             {admin?.firstName} {admin?.lastName}

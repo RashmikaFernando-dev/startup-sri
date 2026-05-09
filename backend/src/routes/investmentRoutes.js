@@ -6,6 +6,7 @@ const User = require('../models/User')
 const { sendInvestmentReceivedEmail, sendRepaymentOverdueEmail } = require('../utils/emailService')
 const KycVerification = require('../models/KycVerification')
 const computeCreditScore = require('../utils/creditScore')
+const Notification = require('../models/Notification')
 
 const router = express.Router()
 
@@ -21,6 +22,16 @@ router.post('/', protect, async (req, res, next) => {
     const parsedAmount = parseFloat(amount)
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       return res.status(400).json({ success: false, message: 'Invalid amount' })
+    }
+
+    // Investor must have approved KYC before investing
+    const investorKyc = await KycVerification.findOne({ user: req.user._id })
+    if (!investorKyc || investorKyc.status !== 'approved') {
+      return res.status(403).json({
+        success: false,
+        message: 'You must complete identity verification (KYC) before investing.',
+        kycRequired: true,
+      })
     }
 
     const project = await Project.findById(projectId)
@@ -99,6 +110,30 @@ router.post('/', protect, async (req, res, next) => {
       console.error('Failed to send investment email:', emailErr.message)
     }
 
+    // In-app notifications
+    const investorName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'An investor'
+    Notification.create({
+      user: project.entrepreneur,
+      message: `${investorName} invested LKR ${parsedAmount.toLocaleString()} in your project "${project.title}".`,
+      type: 'success',
+    }).catch(() => {})
+
+    // Notify investor that their investment was recorded
+    Notification.create({
+      user: req.user._id,
+      message: `Your investment of LKR ${parsedAmount.toLocaleString()} in "${project.title}" was successful.`,
+      type: 'success',
+    }).catch(() => {})
+
+    // Notify entrepreneur if project just became fully funded
+    if (project.status === 'funded') {
+      Notification.create({
+        user: project.entrepreneur,
+        message: `Congratulations! Your project "${project.title}" has reached its funding goal.`,
+        type: 'success',
+      }).catch(() => {})
+    }
+
     res.status(201).json({ success: true, data: investment })
   } catch (err) {
     next(err)
@@ -136,13 +171,13 @@ router.get('/entrepreneur', protect, async (req, res, next) => {
   }
 })
 
-// PATCH /api/investments/:id/repayment/:index  — mark instalment as paid
+// PATCH /api/investments/:id/repayment/:index
+// Entrepreneur claims they have paid — sets status to payment_claimed
 router.patch('/:id/repayment/:index', protect, async (req, res, next) => {
   try {
-    const investment = await Investment.findById(req.params.id).populate('project', 'entrepreneur')
+    const investment = await Investment.findById(req.params.id).populate('project', 'entrepreneur title')
     if (!investment) return res.status(404).json({ success: false, message: 'Investment not found' })
 
-    // Only the entrepreneur who owns the project can mark repayments
     if (investment.project.entrepreneur.toString() !== req.user._id.toString())
       return res.status(403).json({ success: false, message: 'Not authorized' })
 
@@ -150,17 +185,60 @@ router.patch('/:id/repayment/:index', protect, async (req, res, next) => {
     const instalment = investment.repaymentSchedule[idx]
     if (!instalment) return res.status(404).json({ success: false, message: 'Instalment not found' })
     if (instalment.status === 'paid') return res.status(400).json({ success: false, message: 'Already paid' })
+    if (instalment.status === 'payment_claimed') return res.status(400).json({ success: false, message: 'Payment already claimed — awaiting investor confirmation' })
+
+    investment.repaymentSchedule[idx].status = 'payment_claimed'
+    investment.repaymentSchedule[idx].claimedDate = new Date()
+    investment.markModified('repaymentSchedule')
+    await investment.save()
+
+    // Notify investor to confirm receipt
+    const entrepreneurName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'The entrepreneur'
+    Notification.create({
+      user: investment.investor,
+      message: `${entrepreneurName} has claimed repayment #${idx + 1} for "${investment.project.title}". Please confirm receipt in your portfolio.`,
+      type: 'info',
+    }).catch(() => {})
+
+    res.json({ success: true, data: investment })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// PATCH /api/investments/:id/repayment/:index/confirm
+// Investor confirms they received the payment — sets status to paid
+router.patch('/:id/repayment/:index/confirm', protect, async (req, res, next) => {
+  try {
+    const investment = await Investment.findById(req.params.id).populate('project', 'entrepreneur title')
+    if (!investment) return res.status(404).json({ success: false, message: 'Investment not found' })
+
+    if (investment.investor.toString() !== req.user._id.toString())
+      return res.status(403).json({ success: false, message: 'Not authorized — only the investor can confirm receipt' })
+
+    const idx = parseInt(req.params.index)
+    const instalment = investment.repaymentSchedule[idx]
+    if (!instalment) return res.status(404).json({ success: false, message: 'Instalment not found' })
+    if (instalment.status !== 'payment_claimed') return res.status(400).json({ success: false, message: 'Instalment is not awaiting confirmation' })
 
     investment.repaymentSchedule[idx].status = 'paid'
     investment.repaymentSchedule[idx].paidDate = new Date()
     investment.markModified('repaymentSchedule')
     await investment.save()
 
-    // Notify entrepreneur of any remaining overdue instalments
+    // Notify entrepreneur that payment was confirmed
+    const investorName = `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || 'The investor'
+    Notification.create({
+      user: investment.project.entrepreneur,
+      message: `${investorName} confirmed receipt of repayment #${idx + 1} for "${investment.project.title}". Instalment marked as paid.`,
+      type: 'success',
+    }).catch(() => {})
+
+    // Check for overdue remaining instalments and notify entrepreneur
     try {
       const now = new Date()
       const nextOverdue = investment.repaymentSchedule.find(
-        r => r.status !== 'paid' && new Date(r.dueDate) < now
+        r => r.status !== 'paid' && r.status !== 'payment_claimed' && new Date(r.dueDate) < now
       )
       if (nextOverdue) {
         const project = await Project.findById(investment.project).populate('entrepreneur', 'email')

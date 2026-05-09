@@ -181,6 +181,7 @@ export default function Dashboard() {
     if (key === 'apply') { router.push('/user/submit-project'); return }
     if (key === 'profile' || key === 'settings') { router.push('/user/profile'); return }
     if (key === 'feedback') { router.push('/user/feedback'); return }
+    if (key === 'notifications') { router.push('/user/notifications'); return }
     if (key === 'repayments') fetchRepayments()
     setActiveTab(key)
   }
@@ -201,7 +202,7 @@ export default function Dashboard() {
         <UserNavbar user={user} profileImage={profileImage} onLogout={handleLogout} />
 
         {/* ── Body ── */}
-        <Box sx={{ flex: 1, display: 'flex', maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, gap: 3 }}>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, gap: 3 }}>
 
           <EntrepreneurSidebar active={activeTab} onItemClick={handleSidebarClick} />
 
@@ -505,7 +506,8 @@ export default function Dashboard() {
                     {repayments.map((inv: any) => {
                       const paid   = inv.repaymentSchedule.filter((r: any) => r.status === 'paid').length
                       const total  = inv.repaymentSchedule.length
-                      const overdue = inv.repaymentSchedule.filter((r: any) => r.status !== 'paid' && new Date(r.dueDate) < new Date()).length
+                      const claimed = inv.repaymentSchedule.filter((r: any) => r.status === 'payment_claimed').length
+                      const overdue = inv.repaymentSchedule.filter((r: any) => r.status !== 'paid' && r.status !== 'payment_claimed' && new Date(r.dueDate) < new Date()).length
 
                       return (
                         <Box key={inv._id} sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 3, p: 3 }}>
@@ -517,10 +519,15 @@ export default function Dashboard() {
                                 Investor: {inv.investor?.firstName} {inv.investor?.lastName} · LKR {inv.amount?.toLocaleString()} borrowed
                               </Typography>
                             </Box>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                               <Box sx={{ px: 1.5, py: 0.4, borderRadius: 1.5, bgcolor: '#d1fae5' }}>
                                 <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#065f46' }}>{paid}/{total} paid</Typography>
                               </Box>
+                              {claimed > 0 && (
+                                <Box sx={{ px: 1.5, py: 0.4, borderRadius: 1.5, bgcolor: '#dbeafe' }}>
+                                  <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#1e40af' }}>{claimed} awaiting confirmation</Typography>
+                                </Box>
+                              )}
                               {overdue > 0 && (
                                 <Box sx={{ px: 1.5, py: 0.4, borderRadius: 1.5, bgcolor: '#fee2e2' }}>
                                   <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#991b1b' }}>{overdue} overdue</Typography>
@@ -532,10 +539,13 @@ export default function Dashboard() {
                           {/* Instalment table */}
                           <Box sx={{ border: '1px solid #e5e7eb', borderRadius: 2, overflow: 'hidden' }}>
                             {inv.repaymentSchedule.map((r: any, i: number) => {
-                              const isOverdue = r.status !== 'paid' && new Date(r.dueDate) < new Date()
-                              const statusColor = r.status === 'paid' ? { bg: '#d1fae5', color: '#065f46' }
-                                : isOverdue ? { bg: '#fee2e2', color: '#991b1b' }
-                                : { bg: '#fef3c7', color: '#92400e' }
+                              const isClaimed = r.status === 'payment_claimed'
+                              const isPaid = r.status === 'paid'
+                              const isOverdue = !isPaid && !isClaimed && new Date(r.dueDate) < new Date()
+                              const statusColor = isPaid    ? { bg: '#d1fae5', color: '#065f46', label: 'Paid' }
+                                : isClaimed  ? { bg: '#dbeafe', color: '#1e40af', label: 'Awaiting Confirmation' }
+                                : isOverdue  ? { bg: '#fee2e2', color: '#991b1b', label: 'Overdue' }
+                                :               { bg: '#fef3c7', color: '#92400e', label: 'Pending' }
 
                               return (
                                 <Box key={i} sx={{
@@ -552,23 +562,29 @@ export default function Dashboard() {
                                       </Typography>
                                       <Typography sx={{ fontSize: 11, color: '#6b7280' }}>
                                         Due: {new Date(r.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                        {r.paidDate && ` · Paid: ${new Date(r.paidDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                                        {r.claimedDate && !isPaid && ` · Claimed: ${new Date(r.claimedDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                                        {r.paidDate && ` · Confirmed: ${new Date(r.paidDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
                                       </Typography>
                                     </Box>
                                   </Box>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                     <Box sx={{ px: 1.2, py: 0.3, borderRadius: 1.5, bgcolor: statusColor.bg }}>
                                       <Typography sx={{ fontSize: 11, fontWeight: 800, color: statusColor.color }}>
-                                        {r.status === 'paid' ? 'Paid' : isOverdue ? 'Overdue' : 'Pending'}
+                                        {statusColor.label}
                                       </Typography>
                                     </Box>
-                                    {r.status !== 'paid' && (
+                                    {!isPaid && !isClaimed && (
                                       <Button size="small" variant="contained" startIcon={<PaymentsIcon sx={{ fontSize: 14 }} />}
                                         onClick={() => markPaid(inv._id, i)}
                                         sx={{ fontSize: 11, textTransform: 'none', borderRadius: 2, py: 0.5,
                                           bgcolor: '#0a1940', '&:hover': { bgcolor: '#000' } }}>
                                         Mark Paid
                                       </Button>
+                                    )}
+                                    {isClaimed && (
+                                      <Typography sx={{ fontSize: 11, color: '#1e40af', fontStyle: 'italic' }}>
+                                        Waiting for investor
+                                      </Typography>
                                     )}
                                   </Box>
                                 </Box>
