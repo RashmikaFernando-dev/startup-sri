@@ -25,6 +25,9 @@ import Tooltip from '@mui/material/Tooltip'
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
 const validationSchema = Yup.object({
   email: Yup.string()
     .email('Invalid email address')
@@ -51,7 +54,7 @@ export default function Login() {
       dispatch(loginStart())
 
       try {
-        const res = await fetch('http://localhost:5000/api/auth/login', {
+        const res = await fetch(`${API_BASE}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: values.email, password: values.password }),

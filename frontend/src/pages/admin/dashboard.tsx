@@ -7,11 +7,15 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty'
-import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
+import PeopleIcon from '@mui/icons-material/People'
 import AdminNavbar from '@/components/admin/AdminNavbar'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { MonthlyInvestmentChart, CategoryBreakdownChart, ProjectStatusChart, FundingTypeChart } from '@/components/admin/ProjectFundingChart'
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
 
 const CONTENT_LEFT = 240
 
@@ -21,6 +25,7 @@ export default function AdminDashboard() {
   const [projects, setProjects] = useState<Project[]>([])
   const [toast, setToast] = useState<{ open: boolean; msg: string; type: 'success' | 'error' }>({ open: false, msg: '', type: 'success' })
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; body: string; onConfirm: () => void }>({ open: false, title: '', body: '', onConfirm: () => {} })
+  const [analytics, setAnalytics] = useState<any>(null)
 
   useEffect(() => {
     const stored = localStorage.getItem('adminUser')
@@ -34,13 +39,22 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!admin) return
     fetchProjects()
+    fetchAnalytics()
   }, [admin])
+
+  const fetchAnalytics = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/stats/admin`, { headers: { Authorization: `Bearer ${token()}` } })
+      const data = await res.json()
+      if (data.success) setAnalytics(data.data)
+    } catch {}
+  }
 
   const token = () => localStorage.getItem('adminToken')
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/projects', { headers: { Authorization: `Bearer ${token()}` } })
+      const res = await fetch(`${API_BASE}/admin/projects`, { headers: { Authorization: `Bearer ${token()}` } })
       const data = await res.json()
       if (data.success) setProjects(data.data)
     } catch {}
@@ -48,7 +62,7 @@ export default function AdminDashboard() {
 
   const updateProjectStatus = async (id: string, status: Project['status']) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/projects/${id}/status`, {
+      const res = await fetch(`${API_BASE}/admin/projects/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
         body: JSON.stringify({ status }),
@@ -78,6 +92,8 @@ export default function AdminDashboard() {
   const approvedProjects = projects.filter(p => p.status === 'approved' || p.status === 'active').length
   const totalFunding = projects.reduce((s, p) => s + (p.currentFunding || 0), 0)
 
+  const totalUsers = analytics ? Object.values(analytics.usersByRole as Record<string, number>).reduce((s: number, v: number) => s + v, 0) : 0
+
   const statCards = [
     {
       label: 'Total Projects',
@@ -92,14 +108,14 @@ export default function AdminDashboard() {
       iconBg: '#fef3c7',
     },
     {
-      label: 'Approved',
-      value: approvedProjects,
-      icon: <ThumbUpAltIcon sx={{ fontSize: 22, color: '#10b981' }} />,
+      label: 'Total Users',
+      value: totalUsers,
+      icon: <PeopleIcon sx={{ fontSize: 22, color: '#10b981' }} />,
       iconBg: '#d1fae5',
     },
     {
-      label: 'Total Raised',
-      value: fmt(totalFunding),
+      label: 'Total Invested',
+      value: analytics ? fmt(analytics.totalInvested) : fmt(totalFunding),
       icon: <AccountBalanceWalletIcon sx={{ fontSize: 22, color: '#3b82f6' }} />,
       iconBg: '#dbeafe',
     },
@@ -150,6 +166,20 @@ export default function AdminDashboard() {
                 </Box>
               ))}
             </Box>
+
+            {/* Analytics Charts */}
+            {analytics && (
+              <Box sx={{ mb: 4 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2.5, mb: 2.5 }}>
+                  <MonthlyInvestmentChart data={analytics.monthlyInvestments || []} />
+                  <CategoryBreakdownChart data={analytics.categoryBreakdown || []} />
+                </Box>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2.5 }}>
+                  <ProjectStatusChart data={analytics.statusBreakdown || []} />
+                  <FundingTypeChart data={analytics.fundingTypeBreakdown || []} />
+                </Box>
+              </Box>
+            )}
 
             {/* Pending Approvals */}
             <Box sx={{ bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>

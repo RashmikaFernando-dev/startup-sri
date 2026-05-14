@@ -2,8 +2,12 @@ const Project = require('../models/Project')
 const User = require('../models/User')
 const KycVerification = require('../models/KycVerification')
 const Comment = require('../models/Comment')
-const { sendProjectApprovalEmail } = require('../utils/emailService')
+const QRCode = require('qrcode')
+const { sendProjectApprovalEmail, sendProjectRejectionEmail } = require('../utils/emailService')
 const computeCreditScore = require('../utils/creditScore')
+const Notification = require('../models/Notification')
+const notifyAdmins = require('../utils/notifyAdmins')
+const createAuditLog = require('../utils/auditLog')
 
 // @desc    Get all projects
 // @route   GET /api/projects
@@ -26,11 +30,29 @@ const getProjects = async (req, res, next) => {
     const kycList = await KycVerification.find({ user: { $in: entrepreneurIds } }).lean()
     const kycMap = Object.fromEntries(kycList.map(k => [k.user.toString(), k]))
 
-    const data = projects.map(p => {
+    const data = []
+    const userScoreUpdates = []
+
+    for (const p of projects) {
       const kyc = kycMap[p.entrepreneur?._id?.toString()]
       const { score, breakdown } = computeCreditScore(p, kyc)
-      return { ...p.toObject(), creditScore: score, creditBreakdown: breakdown }
-    })
+      data.push({ ...p.toObject(), creditScore: score, creditBreakdown: breakdown })
+
+      if (p.entrepreneur?._id) {
+        userScoreUpdates.push({
+          updateOne: {
+            filter: { _id: p.entrepreneur._id },
+            update: { $set: { creditScore: score } },
+          },
+        })
+      }
+    }
+
+    if (userScoreUpdates.length) {
+      User.bulkWrite(userScoreUpdates).catch(err =>
+        console.error('Failed to persist credit scores:', err.message)
+      )
+    }
 
     res.status(200).json({ success: true, count: data.length, data })
   } catch (error) {
@@ -54,6 +76,10 @@ const getProject = async (req, res, next) => {
     const kyc = await KycVerification.findOne({ user: project.entrepreneur._id }).lean()
     const { score, breakdown } = computeCreditScore(project, kyc)
     const data = { ...project.toObject(), creditScore: score, creditBreakdown: breakdown }
+
+    User.findByIdAndUpdate(project.entrepreneur._id, { creditScore: score }).catch(err =>
+      console.error('Failed to persist credit score:', err.message)
+    )
 
     res.status(200).json({ success: true, data })
   } catch (error) {
@@ -80,6 +106,13 @@ const createProject = async (req, res, next) => {
 
     req.body.entrepreneur = req.user.id
     const project = await Project.create(req.body)
+
+    // Notify all admins a new project needs review
+    notifyAdmins(
+      `New project "${project.title}" was submitted by ${req.user.firstName || ''} ${req.user.lastName || ''} and is awaiting your review.`,
+      'info'
+    )
+
     res.status(201).json({ success: true, data: project })
   } catch (error) {
     next(error)
@@ -147,6 +180,19 @@ const deleteProject = async (req, res, next) => {
 
     await Comment.deleteMany({ project: project._id })
     await project.deleteOne()
+
+    if (req.user.role === 'admin') {
+      await createAuditLog({
+        adminId: req.user.id,
+        action: 'PROJECT_DELETED',
+        targetType: 'Project',
+        targetId: project._id,
+        targetLabel: project.title,
+        details: { previousStatus: project.status },
+        req,
+      })
+    }
+
     res.status(200).json({ success: true, data: {} })
   } catch (error) {
     next(error)
@@ -302,21 +348,105 @@ const updateProjectStatus = async (req, res, next) => {
     if (status === 'rejected' && rejectionReason) {
       project.rejectionReason = rejectionReason
     }
+
+    if (status === 'approved' && !project.proposalId) {
+      const year = new Date().getFullYear()
+      const count = await Project.countDocuments({ proposalId: { $regex: `^PROP-${year}-` } })
+      const seq = String(count + 1).padStart(5, '0')
+      project.proposalId = `PROP-${year}-${seq}`
+
+      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+      const verifyUrl = `${baseUrl}/verify/${project.proposalId}`
+      project.qrCode = await QRCode.toDataURL(verifyUrl, { width: 300, margin: 2 })
+    }
+
     await project.save()
 
-    // Send email notification to the entrepreneur
     if (status === 'approved') {
       try {
-        await sendProjectApprovalEmail(
-          project.entrepreneur.email,
-          project.title
-        )
+        await sendProjectApprovalEmail(project.entrepreneur.email, project.title)
       } catch (emailErr) {
         console.error('Failed to send approval email:', emailErr.message)
       }
+      Notification.create({
+        user: project.entrepreneur._id,
+        message: `Your project "${project.title}" has been approved and is now live.`,
+        type: 'success',
+      }).catch(() => {})
+    }
+    if (status === 'rejected') {
+      try {
+        await sendProjectRejectionEmail(project.entrepreneur.email, project.title, rejectionReason)
+      } catch (emailErr) {
+        console.error('Failed to send rejection email:', emailErr.message)
+      }
+      Notification.create({
+        user: project.entrepreneur._id,
+        message: `Your project "${project.title}" was not approved. Reason: ${rejectionReason || 'See admin comments.'}`,
+        type: 'warning',
+      }).catch(() => {})
     }
 
+    // Audit log
+    const actionMap = {
+      approved: 'PROJECT_APPROVED',
+      rejected: 'PROJECT_REJECTED',
+      active: 'PROJECT_STATUS_CHANGED',
+      completed: 'PROJECT_STATUS_CHANGED',
+    }
+    await createAuditLog({
+      adminId: req.user.id,
+      action: actionMap[status] || 'PROJECT_STATUS_CHANGED',
+      targetType: 'Project',
+      targetId: project._id,
+      targetLabel: project.title,
+      details: {
+        newStatus: status,
+        ...(rejectionReason && { rejectionReason }),
+        entrepreneurEmail: project.entrepreneur.email,
+      },
+      req,
+    })
+
     res.status(200).json({ success: true, data: project })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// @desc    Verify project by proposal ID
+// @route   GET /api/projects/verify/:proposalId
+// @access  Public
+const getProjectByProposalId = async (req, res, next) => {
+  try {
+    const project = await Project.findOne({ proposalId: req.params.proposalId })
+      .populate('entrepreneur', 'firstName lastName email')
+
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Proposal not found' })
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        proposalId: project.proposalId,
+        title: project.title,
+        description: project.description,
+        businessName: project.businessName,
+        businessType: project.businessType,
+        category: project.category,
+        fundingType: project.fundingType,
+        fundingGoal: project.fundingGoal,
+        status: project.status,
+        qrCode: project.qrCode,
+        entrepreneur: {
+          firstName: project.entrepreneur?.firstName,
+          lastName: project.entrepreneur?.lastName,
+        },
+        verifiedAt: project.updatedAt,
+        createdAt: project.createdAt,
+      },
+    })
   } catch (error) {
     next(error)
   }
@@ -332,4 +462,5 @@ module.exports = {
   getProjectComments,
   addProjectComment,
   getLatestComments,
+  getProjectByProposalId,
 }

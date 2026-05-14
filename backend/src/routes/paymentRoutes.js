@@ -18,7 +18,10 @@ router.post('/hash', protect, (req, res) => {
       return res.status(400).json({ success: false, message: 'merchant_id, order_id, amount and currency are required' })
     }
 
-    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET || 'sandbox_secret'
+    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET
+    if (!merchantSecret) {
+      return res.status(500).json({ success: false, message: 'Payment configuration error' })
+    }
     const secretHash = crypto.createHash('md5').update(merchantSecret).digest('hex').toUpperCase()
     const formattedAmount = parseFloat(amount).toFixed(2)
     const rawHash = `${merchant_id}${order_id}${formattedAmount}${currency}${secretHash}`
@@ -39,7 +42,7 @@ router.post('/notify', async (req, res) => {
   try {
     const { merchant_id, order_id, payment_id, payhere_amount, payhere_currency, status_code, md5sig } = req.body
 
-    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET || 'sandbox_secret'
+    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET || ''
     const secretHash = crypto.createHash('md5').update(merchantSecret).digest('hex').toUpperCase()
     const expectedSig = crypto
       .createHash('md5')
@@ -48,19 +51,33 @@ router.post('/notify', async (req, res) => {
       .toUpperCase()
 
     if (expectedSig !== md5sig) {
+      console.error(`[PayHere] Invalid signature for order ${order_id}`)
       return res.status(400).send('Invalid signature')
     }
 
-    // status_code 2 = successful payment
-    if (status_code === '2') {
-      await Investment.findOneAndUpdate(
-        { paymentIntentId: order_id },
-        { status: 'completed' }
-      )
+    const statusMap = {
+      '2': 'completed',   // success
+      '0': 'pending',     // pending
+      '-1': 'cancelled',  // cancelled
+      '-2': 'cancelled',  // failed
+      '-3': 'cancelled',  // chargedback
+    }
+
+    const newStatus = statusMap[status_code] || 'cancelled'
+
+    const investment = await Investment.findOneAndUpdate(
+      { paymentIntentId: order_id },
+      { status: newStatus },
+      { new: true }
+    )
+
+    if (!investment) {
+      console.error(`[PayHere] No investment found for order ${order_id}`)
     }
 
     res.sendStatus(200)
   } catch (err) {
+    console.error('[PayHere] Notify error:', err.message)
     res.sendStatus(500)
   }
 })

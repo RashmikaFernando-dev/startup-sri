@@ -22,6 +22,11 @@ import PaymentIcon from '@mui/icons-material/Payment'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import PieChartIcon from '@mui/icons-material/PieChart'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong'
+import jsPDF from 'jspdf'
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
 
 // Extend window for PayHere SDK
 declare global {
@@ -38,6 +43,7 @@ declare global {
 type PayStatus = 'idle' | 'processing' | 'success' | 'cancelled' | 'error'
 
 const MERCHANT_ID = process.env.NEXT_PUBLIC_PAYHERE_MERCHANT_ID || '1234267'
+const NOTIFY_URL = process.env.NEXT_PUBLIC_PAYHERE_NOTIFY_URL || 'http://localhost:5000/api/payments/notify'
 
 export default function Checkout() {
   const router = useRouter()
@@ -48,6 +54,8 @@ export default function Checkout() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const [payStatus, setPayStatus] = useState<PayStatus>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  const [investmentData, setInvestmentData] = useState<any>(null)
+  const [kycStatus, setKycStatus] = useState<'loading' | 'approved' | 'pending' | 'rejected' | 'none'>('loading')
 
   // Stable order ID for this checkout session
   const [orderId] = useState(
@@ -67,7 +75,8 @@ export default function Checkout() {
   const parsedAmount = parseFloat(amount || '0')
 
   useEffect(() => {
-    if (!localStorage.getItem('token')) {
+    const storedToken = localStorage.getItem('token')
+    if (!storedToken) {
       router.push('/auth/login')
       return
     }
@@ -83,6 +92,22 @@ export default function Checkout() {
         if (img) setProfileImage(img)
       }
     } catch {}
+
+    // Fetch KYC status for the logged-in investor
+    const fetchKyc = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/kyc/my`, {
+          headers: { Authorization: `Bearer ${storedToken}` },
+        })
+        if (res.status === 404) { setKycStatus('none'); return }
+        const data = await res.json()
+        if (data.success) setKycStatus(data.data.status)
+        else setKycStatus('none')
+      } catch {
+        setKycStatus('none')
+      }
+    }
+    fetchKyc()
   }, [router.isReady])
 
   // Inject PayHere script once — button is always enabled; we check window.payhere on click
@@ -105,7 +130,7 @@ export default function Checkout() {
 
   const recordInvestment = async (completedOrderId: string) => {
     const authToken = token || localStorage.getItem('token')
-    const res = await fetch('http://localhost:5000/api/investments', {
+    const res = await fetch(`${API_BASE}/investments`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -115,6 +140,7 @@ export default function Checkout() {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.message || 'Failed to record investment')
+    setInvestmentData(data.data)
     return data
   }
 
@@ -135,7 +161,7 @@ export default function Checkout() {
       const authToken = token || localStorage.getItem('token')
 
       // Generate hash on the server (merchant secret stays private)
-      const hashRes = await fetch('http://localhost:5000/api/payments/hash', {
+      const hashRes = await fetch(`${API_BASE}/payments/hash`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,11 +201,11 @@ export default function Checkout() {
       }
 
       const payment = {
-        sandbox: true, // set to false in production
+        sandbox: process.env.NEXT_PUBLIC_PAYHERE_SANDBOX !== 'false',
         merchant_id: MERCHANT_ID,
         return_url: `${window.location.origin}/user/projects`,
         cancel_url: `${window.location.origin}/user/projects`,
-        notify_url: 'https://underage-peeringly-vincent.ngrok-free.dev/api/payments/notify',
+        notify_url: NOTIFY_URL,
         order_id: orderId,
         items: `Investment: ${projectTitle}`,
         amount: parsedAmount.toFixed(2),
@@ -188,8 +214,8 @@ export default function Checkout() {
         first_name: user?.firstName || 'Investor',
         last_name: user?.lastName || '',
         email: user?.email || '',
-        phone: '0771234567',
-        address: 'No.1, Galle Road',
+        phone: (user as any)?.phoneNumber || '',
+        address: '',
         city: 'Colombo',
         country: 'Sri Lanka',
       }
@@ -208,6 +234,135 @@ export default function Checkout() {
     fundingType === 'microloan' && interestRate && duration
       ? parsedAmount * (1 + (parseFloat(interestRate) / 100) * (parseFloat(duration) / 12))
       : null
+
+  const generateReceipt = () => {
+    const doc = new jsPDF()
+    const pageW = doc.internal.pageSize.getWidth()
+    const leftM = 20
+    const rightVal = pageW - 20
+    let y = 20
+
+    // Header
+    doc.setFillColor(10, 25, 64)
+    doc.rect(0, 0, pageW, 48, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(22)
+    doc.setFont('helvetica', 'bold')
+    doc.text('StartupSri', leftM, 22)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Investment Receipt', leftM, 32)
+    doc.setFontSize(9)
+    doc.text('www.startupsri.lk', leftM, 40)
+
+    // Receipt number on right
+    const receiptNo = investmentData?._id
+      ? `RCP-${investmentData._id.slice(-8).toUpperCase()}`
+      : `RCP-${orderId.slice(-8).toUpperCase()}`
+    doc.setFontSize(10)
+    doc.text(receiptNo, rightVal, 22, { align: 'right' })
+    doc.text(new Date().toLocaleDateString('en-LK', { year: 'numeric', month: 'long', day: 'numeric' }), rightVal, 32, { align: 'right' })
+
+    y = 62
+
+    // Investor info
+    doc.setTextColor(107, 114, 128)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('INVESTOR', leftM, y)
+    y += 7
+    doc.setTextColor(10, 25, 64)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Investor', leftM, y)
+    y += 6
+    doc.setFontSize(9)
+    doc.setTextColor(107, 114, 128)
+    doc.text(user?.email || '', leftM, y)
+
+    y += 16
+
+    // Divider
+    doc.setDrawColor(229, 231, 235)
+    doc.setLineWidth(0.5)
+    doc.line(leftM, y, rightVal, y)
+    y += 12
+
+    // Transaction details table
+    doc.setTextColor(107, 114, 128)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('TRANSACTION DETAILS', leftM, y)
+    y += 10
+
+    const addRow = (label: string, value: string, highlight = false) => {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(10)
+      doc.setTextColor(107, 114, 128)
+      doc.text(label, leftM, y)
+      if (highlight) { doc.setTextColor(22, 163, 74) } else { doc.setTextColor(10, 25, 64) }
+      doc.setFont('helvetica', highlight ? 'bold' : 'normal')
+      doc.text(value, rightVal, y, { align: 'right' })
+      y += 8
+    }
+
+    addRow('Transaction ID', investmentData?.paymentIntentId || orderId)
+    addRow('Date & Time', new Date().toLocaleString('en-LK'))
+    addRow('Project', projectTitle || 'N/A')
+    addRow('Investment Type', fundingType === 'equity' ? 'Equity' : 'Microloan')
+
+    if (fundingType === 'microloan') {
+      addRow('Interest Rate', `${interestRate}% p.a.`)
+      addRow('Loan Duration', `${duration} months`)
+    }
+    if (fundingType === 'equity') {
+      addRow('Equity Offered', `${equityOffered}%`)
+    }
+
+    addRow('Payment Method', 'PayHere')
+    addRow('Status', 'Completed')
+
+    y += 4
+    doc.setDrawColor(229, 231, 235)
+    doc.line(leftM, y, rightVal, y)
+    y += 10
+
+    // Amount
+    doc.setFontSize(10)
+    doc.setTextColor(107, 114, 128)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Investment Amount', leftM, y)
+    doc.setFontSize(16)
+    doc.setTextColor(10, 25, 64)
+    doc.setFont('helvetica', 'bold')
+    doc.text(fmt(parsedAmount), rightVal, y, { align: 'right' })
+    y += 10
+
+    if (estimatedReturn) {
+      doc.setFontSize(10)
+      doc.setTextColor(107, 114, 128)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Estimated Total Return', leftM, y)
+      doc.setTextColor(22, 163, 74)
+      doc.setFont('helvetica', 'bold')
+      doc.text(fmt(Math.round(estimatedReturn)), rightVal, y, { align: 'right' })
+      y += 10
+    }
+
+    // Footer
+    y += 16
+    doc.setDrawColor(229, 231, 235)
+    doc.line(leftM, y, rightVal, y)
+    y += 10
+    doc.setFontSize(8)
+    doc.setTextColor(156, 163, 175)
+    doc.setFont('helvetica', 'normal')
+    doc.text('This is a computer-generated receipt and does not require a signature.', pageW / 2, y, { align: 'center' })
+    y += 5
+    doc.text('For queries, contact hello@startupsri.lk | +94 77 000 0000', pageW / 2, y, { align: 'center' })
+
+    doc.save(`StartupSri_Receipt_${receiptNo}.pdf`)
+  }
 
   return (
     <>
@@ -257,6 +412,20 @@ export default function Checkout() {
                 <strong>{projectTitle}</strong> has been recorded successfully.
               </Typography>
               <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <Button
+                  variant="contained"
+                  startIcon={<ReceiptLongIcon />}
+                  onClick={generateReceipt}
+                  sx={{
+                    bgcolor: '#16a34a',
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    '&:hover': { bgcolor: '#15803d' },
+                  }}
+                >
+                  Download Receipt
+                </Button>
                 <Button
                   variant="contained"
                   onClick={() => router.push(user?.role === 'entrepreneur' ? '/user/dashboard' : '/user/projects')}
@@ -353,66 +522,110 @@ export default function Checkout() {
                 )}
               </Paper>
 
-              {/* ── Payment Panel ── */}
-              <Paper sx={{ borderRadius: 3, p: 3, border: '1px solid #e5e7eb' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2.5 }}>
-                  <LockIcon sx={{ color: '#6b7280', fontSize: 18 }} />
-                  <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
-                    Secure payment powered by{' '}
-                    <Box component="span" sx={{ fontWeight: 700, color: '#0a1940' }}>
-                      PayHere
+              {/* ── KYC Gate or Payment Panel ── */}
+              {kycStatus === 'loading' ? (
+                <Paper sx={{ borderRadius: 3, p: 3, border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                  <CircularProgress size={24} sx={{ color: '#0a1940' }} />
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>Checking verification status…</Typography>
+                </Paper>
+              ) : kycStatus !== 'approved' ? (
+                <Paper sx={{ borderRadius: 3, p: 3, border: '2px solid #fbbf24', bgcolor: '#fffbeb' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                    <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <LockIcon sx={{ color: '#d97706', fontSize: 20 }} />
                     </Box>
+                    <Box>
+                      <Typography sx={{ fontWeight: 800, color: '#92400e', fontSize: 15 }}>Identity Verification Required</Typography>
+                      <Typography variant="body2" sx={{ color: '#78350f' }}>
+                        You must complete KYC verification before investing.
+                      </Typography>
+                    </Box>
+                  </Box>
+                  {kycStatus === 'pending' && (
+                    <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+                      Your verification is currently <strong>pending admin review</strong>. You will be notified once it is approved.
+                    </Alert>
+                  )}
+                  {kycStatus === 'rejected' && (
+                    <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+                      Your verification was <strong>rejected</strong>. Please resubmit your documents.
+                    </Alert>
+                  )}
+                  {kycStatus === 'none' && (
+                    <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                      You have not submitted your identity documents yet.
+                    </Alert>
+                  )}
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    onClick={() => router.push('/user/verifications')}
+                    sx={{ bgcolor: '#92400e', borderRadius: 2, textTransform: 'none', fontWeight: 700, py: 1.4, '&:hover': { bgcolor: '#78350f' } }}
+                  >
+                    {kycStatus === 'none' || kycStatus === 'rejected' ? 'Complete Verification Now' : 'View Verification Status'}
+                  </Button>
+                </Paper>
+              ) : (
+                <Paper sx={{ borderRadius: 3, p: 3, border: '1px solid #e5e7eb' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2.5 }}>
+                    <LockIcon sx={{ color: '#6b7280', fontSize: 18 }} />
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+                      Secure payment powered by{' '}
+                      <Box component="span" sx={{ fontWeight: 700, color: '#0a1940' }}>
+                        PayHere
+                      </Box>
+                    </Typography>
+                  </Box>
+
+                  {errorMsg && (
+                    <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+                      {errorMsg}
+                    </Alert>
+                  )}
+
+                  {payStatus === 'cancelled' && !errorMsg && (
+                    <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                      Payment was cancelled. You can try again below.
+                    </Alert>
+                  )}
+
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    size="large"
+                    onClick={handlePayNow}
+                    disabled={payStatus === 'processing'}
+                    startIcon={
+                      payStatus === 'processing' ? (
+                        <CircularProgress size={18} color="inherit" />
+                      ) : (
+                        <PaymentIcon />
+                      )
+                    }
+                    sx={{
+                      bgcolor: '#0a1940',
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      py: 1.6,
+                      fontSize: '1rem',
+                      '&:hover': { bgcolor: '#1565c0' },
+                    }}
+                  >
+                    {payStatus === 'processing'
+                      ? 'Preparing Payment…'
+                      : `Pay ${fmt(parsedAmount)} with PayHere`}
+                  </Button>
+
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: 'block', textAlign: 'center', mt: 1.5 }}
+                  >
+                    A secure PayHere popup will open to complete your payment.
                   </Typography>
-                </Box>
-
-                {errorMsg && (
-                  <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
-                    {errorMsg}
-                  </Alert>
-                )}
-
-                {payStatus === 'cancelled' && !errorMsg && (
-                  <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
-                    Payment was cancelled. You can try again below.
-                  </Alert>
-                )}
-
-                <Button
-                  fullWidth
-                  variant="contained"
-                  size="large"
-                  onClick={handlePayNow}
-                  disabled={payStatus === 'processing'}
-                  startIcon={
-                    payStatus === 'processing' ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <PaymentIcon />
-                    )
-                  }
-                  sx={{
-                    bgcolor: '#0a1940',
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontWeight: 700,
-                    py: 1.6,
-                    fontSize: '1rem',
-                    '&:hover': { bgcolor: '#1565c0' },
-                  }}
-                >
-                  {payStatus === 'processing'
-                    ? 'Preparing Payment…'
-                    : `Pay ${fmt(parsedAmount)} with PayHere`}
-                </Button>
-
-                <Typography
-                  variant="caption"
-                  color="text.secondary"
-                  sx={{ display: 'block', textAlign: 'center', mt: 1.5 }}
-                >
-                  A secure PayHere popup will open to complete your payment.
-                </Typography>
-              </Paper>
+                </Paper>
+              )}
             </>
           )}
         </Box>

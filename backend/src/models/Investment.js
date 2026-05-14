@@ -36,9 +36,10 @@ const investmentSchema = new mongoose.Schema(
         amount: Number,
         status: {
           type: String,
-          enum: ['pending', 'paid', 'overdue'],
+          enum: ['pending', 'payment_claimed', 'paid', 'overdue'],
           default: 'pending',
         },
+        claimedDate: Date,
         paidDate: Date,
       },
     ],

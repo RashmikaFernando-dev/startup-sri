@@ -28,8 +28,29 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday'
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty'
+import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
+import PaymentsIcon from '@mui/icons-material/Payments'
 import UserNavbar from '@/components/user/UserNavbar'
 import EntrepreneurSidebar from '@/components/user/EntrepreneurSidebar'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+import { Bar, Doughnut } from 'react-chartjs-2'
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
 const STATUS_COLOR: Record<string, 'default' | 'warning' | 'success' | 'error' | 'info' | 'primary'> = {
   pending: 'warning',
@@ -56,6 +77,10 @@ export default function Dashboard() {
   // Delete confirm dialog
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
+  // Repayments tab
+  const [repayments, setRepayments] = useState<any[]>([])
+  const [repaymentsLoading, setRepaymentsLoading] = useState(false)
+
   useEffect(() => {
     const storedToken = localStorage.getItem('token')
     if (!storedToken) { router.push('/auth/login'); return }
@@ -80,7 +105,7 @@ export default function Dashboard() {
     dispatch(fetchProjectsStart())
     try {
       const authToken = token || localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/projects', {
+      const res = await fetch(`${API_BASE}/projects`, {
         headers: { Authorization: `Bearer ${authToken}` },
       })
       const data = await res.json()
@@ -98,12 +123,41 @@ export default function Dashboard() {
     }
   }
 
+  const fetchRepayments = async () => {
+    setRepaymentsLoading(true)
+    try {
+      const authToken = token || localStorage.getItem('token')
+      const res = await fetch(`${API_BASE}/investments/entrepreneur`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      const data = await res.json()
+      if (data.success) setRepayments(data.data)
+    } catch {}
+    finally { setRepaymentsLoading(false) }
+  }
+
+  const markPaid = async (investmentId: string, index: number) => {
+    try {
+      const authToken = token || localStorage.getItem('token')
+      const res = await fetch(`${API_BASE}/investments/${investmentId}/repayment/${index}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message)
+      setToast({ open: true, msg: 'Instalment marked as paid.', type: 'success' })
+      fetchRepayments()
+    } catch (e: any) {
+      setToast({ open: true, msg: e.message || 'Failed to update.', type: 'error' })
+    }
+  }
+
   // Delete project
   const handleDelete = async () => {
     if (!deleteId) return
     try {
       const authToken = token || localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/projects/${deleteId}`, {
+      const res = await fetch(`${API_BASE}/projects/${deleteId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${authToken}` },
       })
@@ -129,6 +183,9 @@ export default function Dashboard() {
   const handleSidebarClick = (key: string) => {
     if (key === 'apply') { router.push('/user/submit-project'); return }
     if (key === 'profile' || key === 'settings') { router.push('/user/profile'); return }
+    if (key === 'feedback') { router.push('/user/feedback'); return }
+    if (key === 'notifications') { router.push('/user/notifications'); return }
+    if (key === 'repayments') fetchRepayments()
     setActiveTab(key)
   }
 
@@ -148,7 +205,7 @@ export default function Dashboard() {
         <UserNavbar user={user} profileImage={profileImage} onLogout={handleLogout} />
 
         {/* ── Body ── */}
-        <Box sx={{ flex: 1, display: 'flex', maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, gap: 3 }}>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, gap: 3 }}>
 
           <EntrepreneurSidebar active={activeTab} onItemClick={handleSidebarClick} />
 
@@ -158,6 +215,106 @@ export default function Dashboard() {
             {/* ── MY LISTINGS tab ── */}
             {activeTab === 'listings' && (
               <Box>
+                {/* ── Analytics stats row ── */}
+                {projects.length > 0 && (() => {
+                  const totalRaised    = projects.reduce((s, p) => s + (p.currentFunding || 0), 0)
+                  const totalGoal      = projects.reduce((s, p) => s + p.fundingGoal, 0)
+                  const approvedCount  = projects.filter(p => ['approved', 'active', 'funded'].includes(p.status)).length
+                  const pendingCount   = projects.filter(p => p.status === 'pending').length
+                  const overallPct     = totalGoal > 0 ? Math.min(Math.round((totalRaised / totalGoal) * 100), 100) : 0
+
+                  const stats = [
+                    { label: 'Total Projects',   value: projects.length,      icon: <RocketLaunchIcon sx={{ fontSize: 20, color: '#6366f1' }} />, iconBg: '#ede9fe' },
+                    { label: 'Total Raised',     value: fmt(totalRaised),     icon: <AccountBalanceWalletIcon sx={{ fontSize: 20, color: '#3b82f6' }} />, iconBg: '#dbeafe' },
+                    { label: 'Approved / Active',value: approvedCount,        icon: <CheckCircleIcon sx={{ fontSize: 20, color: '#10b981' }} />, iconBg: '#d1fae5' },
+                    { label: 'Pending Review',   value: pendingCount,         icon: <HourglassEmptyIcon sx={{ fontSize: 20, color: '#f59e0b' }} />, iconBg: '#fef3c7' },
+                  ]
+
+                  const statusCounts: Record<string, number> = {}
+                  projects.forEach(p => { statusCounts[p.status] = (statusCounts[p.status] || 0) + 1 })
+                  const statusLabels = Object.keys(statusCounts).map(s => s.charAt(0).toUpperCase() + s.slice(1))
+                  const statusColors: Record<string, string> = { pending: '#f59e0b', approved: '#10b981', rejected: '#ef4444', active: '#3b82f6', funded: '#8b5cf6', completed: '#6b7280' }
+
+                  const barChartData = {
+                    labels: projects.map(p => p.title.length > 18 ? p.title.slice(0, 18) + '…' : p.title),
+                    datasets: [
+                      { label: 'Goal', data: projects.map(p => p.fundingGoal), backgroundColor: 'rgba(99,102,241,0.6)', borderRadius: 4 },
+                      { label: 'Raised', data: projects.map(p => p.currentFunding || 0), backgroundColor: 'rgba(16,185,129,0.7)', borderRadius: 4 },
+                    ],
+                  }
+
+                  const doughnutData = {
+                    labels: statusLabels,
+                    datasets: [{
+                      data: Object.values(statusCounts),
+                      backgroundColor: Object.keys(statusCounts).map(s => statusColors[s] || '#9ca3af'),
+                      borderWidth: 0,
+                      hoverOffset: 6,
+                    }],
+                  }
+
+                  return (
+                    <Box sx={{ mb: 3 }}>
+                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4,1fr)' }, gap: 2, mb: 2.5 }}>
+                        {stats.map(s => (
+                          <Box key={s.label} sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 2.5, p: 2.5 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                              <Typography sx={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>{s.label}</Typography>
+                              <Box sx={{ width: 32, height: 32, borderRadius: 1.5, bgcolor: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {s.icon}
+                              </Box>
+                            </Box>
+                            <Typography sx={{ fontWeight: 800, fontSize: 22, color: '#0a1940' }}>{s.value}</Typography>
+                          </Box>
+                        ))}
+                      </Box>
+
+                      {/* Overall funding progress */}
+                      <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 2.5, p: 2.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <TrendingUpIcon sx={{ fontSize: 18, color: '#0a1940' }} />
+                            <Typography sx={{ fontWeight: 700, fontSize: 14, color: '#0a1940' }}>Overall Funding Progress</Typography>
+                          </Box>
+                          <Typography sx={{ fontWeight: 800, fontSize: 14, color: '#0a1940' }}>{overallPct}%</Typography>
+                        </Box>
+                        <LinearProgress variant="determinate" value={overallPct}
+                          sx={{ height: 8, borderRadius: 4, bgcolor: '#f3f4f6', '& .MuiLinearProgress-bar': { bgcolor: '#0a1940' } }} />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                          <Typography sx={{ fontSize: 12, color: '#6b7280' }}>{fmt(totalRaised)} raised</Typography>
+                          <Typography sx={{ fontSize: 12, color: '#6b7280' }}>Goal: {fmt(totalGoal)}</Typography>
+                        </Box>
+                      </Box>
+
+                      {/* Charts */}
+                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '3fr 2fr' }, gap: 2.5, mt: 2.5 }}>
+                        <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 2.5, p: 2.5 }}>
+                          <Typography sx={{ fontWeight: 700, fontSize: 14, color: '#0a1940', mb: 2 }}>Funding by Project</Typography>
+                          <Box sx={{ height: 220 }}>
+                            <Bar data={barChartData} options={{
+                              responsive: true, maintainAspectRatio: false,
+                              plugins: { legend: { position: 'top', labels: { font: { size: 11 }, usePointStyle: true, pointStyle: 'circle' } } },
+                              scales: {
+                                y: { beginAtZero: true, ticks: { callback: (v) => `${(Number(v) / 1000).toFixed(0)}K`, font: { size: 10 } }, grid: { color: '#f3f4f6' } },
+                                x: { ticks: { font: { size: 10 } }, grid: { display: false } },
+                              },
+                            }} />
+                          </Box>
+                        </Box>
+                        <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 2.5, p: 2.5 }}>
+                          <Typography sx={{ fontWeight: 700, fontSize: 14, color: '#0a1940', mb: 2 }}>Project Status</Typography>
+                          <Box sx={{ maxWidth: 200, mx: 'auto' }}>
+                            <Doughnut data={doughnutData} options={{
+                              responsive: true, maintainAspectRatio: true, cutout: '65%',
+                              plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12, usePointStyle: true, pointStyle: 'circle' } } },
+                            }} />
+                          </Box>
+                        </Box>
+                      </Box>
+                    </Box>
+                  )
+                })()}
+
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
                   <Box>
                     <Typography variant="h5" sx={{ fontWeight: 800, color: '#0a1940' }}>My Listings</Typography>
@@ -330,6 +487,120 @@ export default function Dashboard() {
               </Box>
             )}
 
+
+            {/* ── REPAYMENTS tab ── */}
+            {activeTab === 'repayments' && (
+              <Box>
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: '#0a1940' }}>Repayments</Typography>
+                  <Typography variant="body2" color="text.secondary">Microloan instalments owed to your investors</Typography>
+                </Box>
+
+                {repaymentsLoading ? (
+                  <Box sx={{ textAlign: 'center', py: 6, color: '#9ca3af' }}>Loading...</Box>
+                ) : repayments.length === 0 ? (
+                  <Box sx={{ bgcolor: '#fff', border: '2px dashed #e5e7eb', borderRadius: 3, textAlign: 'center', py: 8 }}>
+                    <AccountBalanceIcon sx={{ fontSize: 48, color: '#d1d5db', mb: 2 }} />
+                    <Typography variant="h6" sx={{ fontWeight: 700, color: '#374151' }}>No repayments yet</Typography>
+                    <Typography variant="body2" color="text.secondary">Microloan repayment schedules will appear here once investors fund your projects.</Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    {repayments.map((inv: any) => {
+                      const paid   = inv.repaymentSchedule.filter((r: any) => r.status === 'paid').length
+                      const total  = inv.repaymentSchedule.length
+                      const claimed = inv.repaymentSchedule.filter((r: any) => r.status === 'payment_claimed').length
+                      const overdue = inv.repaymentSchedule.filter((r: any) => r.status !== 'paid' && r.status !== 'payment_claimed' && new Date(r.dueDate) < new Date()).length
+
+                      return (
+                        <Box key={inv._id} sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 3, p: 3 }}>
+                          {/* Header */}
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                            <Box>
+                              <Typography sx={{ fontWeight: 800, color: '#0a1940' }}>{inv.project?.title}</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                Investor: {inv.investor?.firstName} {inv.investor?.lastName} · LKR {inv.amount?.toLocaleString()} borrowed
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                              <Box sx={{ px: 1.5, py: 0.4, borderRadius: 1.5, bgcolor: '#d1fae5' }}>
+                                <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#065f46' }}>{paid}/{total} paid</Typography>
+                              </Box>
+                              {claimed > 0 && (
+                                <Box sx={{ px: 1.5, py: 0.4, borderRadius: 1.5, bgcolor: '#dbeafe' }}>
+                                  <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#1e40af' }}>{claimed} awaiting confirmation</Typography>
+                                </Box>
+                              )}
+                              {overdue > 0 && (
+                                <Box sx={{ px: 1.5, py: 0.4, borderRadius: 1.5, bgcolor: '#fee2e2' }}>
+                                  <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#991b1b' }}>{overdue} overdue</Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          </Box>
+
+                          {/* Instalment table */}
+                          <Box sx={{ border: '1px solid #e5e7eb', borderRadius: 2, overflow: 'hidden' }}>
+                            {inv.repaymentSchedule.map((r: any, i: number) => {
+                              const isClaimed = r.status === 'payment_claimed'
+                              const isPaid = r.status === 'paid'
+                              const isOverdue = !isPaid && !isClaimed && new Date(r.dueDate) < new Date()
+                              const statusColor = isPaid    ? { bg: '#d1fae5', color: '#065f46', label: 'Paid' }
+                                : isClaimed  ? { bg: '#dbeafe', color: '#1e40af', label: 'Awaiting Confirmation' }
+                                : isOverdue  ? { bg: '#fee2e2', color: '#991b1b', label: 'Overdue' }
+                                :               { bg: '#fef3c7', color: '#92400e', label: 'Pending' }
+
+                              return (
+                                <Box key={i} sx={{
+                                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                  px: 2, py: 1.5, bgcolor: i % 2 === 0 ? '#fff' : '#f9fafb',
+                                  borderBottom: i < inv.repaymentSchedule.length - 1 ? '1px solid #e5e7eb' : 'none',
+                                  flexWrap: 'wrap', gap: 1,
+                                }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Typography sx={{ fontSize: 12, color: '#6b7280', minWidth: 24 }}>#{i + 1}</Typography>
+                                    <Box>
+                                      <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#0a1940' }}>
+                                        LKR {r.amount?.toLocaleString()}
+                                      </Typography>
+                                      <Typography sx={{ fontSize: 11, color: '#6b7280' }}>
+                                        Due: {new Date(r.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        {r.claimedDate && !isPaid && ` · Claimed: ${new Date(r.claimedDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                                        {r.paidDate && ` · Confirmed: ${new Date(r.paidDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                    <Box sx={{ px: 1.2, py: 0.3, borderRadius: 1.5, bgcolor: statusColor.bg }}>
+                                      <Typography sx={{ fontSize: 11, fontWeight: 800, color: statusColor.color }}>
+                                        {statusColor.label}
+                                      </Typography>
+                                    </Box>
+                                    {!isPaid && !isClaimed && (
+                                      <Button size="small" variant="contained" startIcon={<PaymentsIcon sx={{ fontSize: 14 }} />}
+                                        onClick={() => markPaid(inv._id, i)}
+                                        sx={{ fontSize: 11, textTransform: 'none', borderRadius: 2, py: 0.5,
+                                          bgcolor: '#0a1940', '&:hover': { bgcolor: '#000' } }}>
+                                        Mark Paid
+                                      </Button>
+                                    )}
+                                    {isClaimed && (
+                                      <Typography sx={{ fontSize: 11, color: '#1e40af', fontStyle: 'italic' }}>
+                                        Waiting for investor
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                </Box>
+                              )
+                            })}
+                          </Box>
+                        </Box>
+                      )
+                    })}
+                  </Box>
+                )}
+              </Box>
+            )}
 
           </Box>
         </Box>

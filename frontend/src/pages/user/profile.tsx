@@ -22,7 +22,14 @@ import SecurityIcon from '@mui/icons-material/Security'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import LogoutIcon from '@mui/icons-material/Logout'
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
+import LockIcon from '@mui/icons-material/Lock'
+import VisibilityIcon from '@mui/icons-material/Visibility'
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff'
+import CircularProgress from '@mui/material/CircularProgress'
+import IconButton from '@mui/material/IconButton'
+import InputAdornment from '@mui/material/InputAdornment'
 import UserNavbar from '@/components/user/UserNavbar'
+import api from '@/utils/api'
 
 const tabs = [
   { key: 'info', label: 'Profile Info', icon: <PersonIcon fontSize="small" /> },
@@ -37,6 +44,37 @@ export default function ProfilePage() {
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [toast, setToast] = useState<{ open: boolean; msg: string; type: 'success' | 'error' }>({ open: false, msg: '', type: 'success' })
+
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showCurrentPw, setShowCurrentPw] = useState(false)
+  const [showNewPw, setShowNewPw] = useState(false)
+  const [showConfirmPw, setShowConfirmPw] = useState(false)
+  const [changingPw, setChangingPw] = useState(false)
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setToast({ open: true, msg: 'Please fill in all password fields.', type: 'error' }); return
+    }
+    if (newPassword.length < 8) {
+      setToast({ open: true, msg: 'New password must be at least 8 characters.', type: 'error' }); return
+    }
+    if (newPassword !== confirmPassword) {
+      setToast({ open: true, msg: 'New passwords do not match.', type: 'error' }); return
+    }
+    setChangingPw(true)
+    try {
+      await api.put('/users/change-password', { currentPassword, newPassword })
+      setToast({ open: true, msg: 'Password changed successfully!', type: 'success' })
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to change password.'
+      setToast({ open: true, msg, type: 'error' })
+    } finally {
+      setChangingPw(false)
+    }
+  }
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -90,7 +128,7 @@ export default function ProfilePage() {
           user={user}
           profileImage={profileImage}
           onLogout={handleLogout}
-          onBack={() => router.push('/user/dashboard')}
+          onBack={() => router.push(user?.role === 'investor' ? '/user/projects' : '/user/dashboard')}
           backLabel="Profile"
         />
 
@@ -239,6 +277,79 @@ export default function ProfilePage() {
                       <Chip label="Enabled" color="success" size="small" sx={{ fontWeight: 700 }} />
                     </Box>
                   ))}
+                </Box>
+              </Box>
+
+              {/* Change Password */}
+              <Box sx={{ bgcolor: '#fff', border: '1px solid #e5e7eb', borderRadius: 3, p: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+                  <LockIcon sx={{ color: '#0a1940' }} />
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1940' }}>Change Password</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 420 }}>
+                  <TextField
+                    label="Current Password"
+                    type={showCurrentPw ? 'text' : 'password'}
+                    size="small"
+                    fullWidth
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton size="small" onClick={() => setShowCurrentPw(v => !v)} edge="end">
+                            {showCurrentPw ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <TextField
+                    label="New Password"
+                    type={showNewPw ? 'text' : 'password'}
+                    size="small"
+                    fullWidth
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    helperText="Must be at least 8 characters"
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton size="small" onClick={() => setShowNewPw(v => !v)} edge="end">
+                            {showNewPw ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <TextField
+                    label="Confirm New Password"
+                    type={showConfirmPw ? 'text' : 'password'}
+                    size="small"
+                    fullWidth
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    error={confirmPassword.length > 0 && newPassword !== confirmPassword}
+                    helperText={confirmPassword.length > 0 && newPassword !== confirmPassword ? 'Passwords do not match' : ''}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton size="small" onClick={() => setShowConfirmPw(v => !v)} edge="end">
+                            {showConfirmPw ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={handleChangePassword}
+                    disabled={changingPw || !currentPassword || !newPassword || !confirmPassword}
+                    startIcon={changingPw ? <CircularProgress size={16} color="inherit" /> : <LockIcon />}
+                    sx={{ alignSelf: 'flex-start', bgcolor: '#0a1940', '&:hover': { bgcolor: '#132a5e' }, borderRadius: 2, textTransform: 'none', fontWeight: 700, mt: 0.5 }}
+                  >
+                    {changingPw ? 'Changing...' : 'Change Password'}
+                  </Button>
                 </Box>
               </Box>
 
