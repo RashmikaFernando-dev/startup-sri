@@ -5,6 +5,9 @@ import { Box, Typography, Avatar } from '@mui/material'
 import AdminNavbar from '@/components/admin/AdminNavbar'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
 interface User {
   _id: string
   firstName: string
@@ -49,7 +52,7 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:5000/api/admin/users', { headers: { Authorization: `Bearer ${token()}` } })
+      const res = await fetch(`${API_BASE}/admin/users`, { headers: { Authorization: `Bearer ${token()}` } })
       const data = await res.json()
       if (data.success) setUsers(data.data)
     } catch {} finally { setLoading(false) }

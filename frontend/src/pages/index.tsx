@@ -11,15 +11,10 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
-import FormatQuoteIcon from '@mui/icons-material/FormatQuote'
 import EmailIcon from '@mui/icons-material/Email'
 import PhoneIcon from '@mui/icons-material/Phone'
 import LocationOnIcon from '@mui/icons-material/LocationOn'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
-import LinkedInIcon from '@mui/icons-material/LinkedIn'
-import TwitterIcon from '@mui/icons-material/Twitter'
-import FacebookIcon from '@mui/icons-material/Facebook'
-import InstagramIcon from '@mui/icons-material/Instagram'
 import api from '@/utils/api'
 
 
@@ -487,7 +482,7 @@ export default function Home() {
               >
                 <Box
                   component="img"
-                  src="https://t4.ftcdn.net/jpg/05/22/92/93/360_F_522929332_1Httbekzbw2qIaTEjrT9ZlI1uYOtK0FA.jpg"
+                  src="/howitworks.jpeg"
                   alt="How it works"
                   sx={{ width: '100%', height: 480, objectFit: 'cover', display: 'block', transition: 'transform 0.4s ease' }}
                 />

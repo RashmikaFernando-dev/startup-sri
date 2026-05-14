@@ -18,7 +18,10 @@ router.post('/hash', protect, (req, res) => {
       return res.status(400).json({ success: false, message: 'merchant_id, order_id, amount and currency are required' })
     }
 
-    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET || 'sandbox_secret'
+    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET
+    if (!merchantSecret) {
+      return res.status(500).json({ success: false, message: 'Payment configuration error' })
+    }
     const secretHash = crypto.createHash('md5').update(merchantSecret).digest('hex').toUpperCase()
     const formattedAmount = parseFloat(amount).toFixed(2)
     const rawHash = `${merchant_id}${order_id}${formattedAmount}${currency}${secretHash}`
@@ -39,7 +42,7 @@ router.post('/notify', async (req, res) => {
   try {
     const { merchant_id, order_id, payment_id, payhere_amount, payhere_currency, status_code, md5sig } = req.body
 
-    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET || 'sandbox_secret'
+    const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET || ''
     const secretHash = crypto.createHash('md5').update(merchantSecret).digest('hex').toUpperCase()
     const expectedSig = crypto
       .createHash('md5')
@@ -68,10 +71,8 @@ router.post('/notify', async (req, res) => {
       { new: true }
     )
 
-    if (investment) {
-      console.log(`[PayHere] Order ${order_id} -> ${newStatus} (status_code: ${status_code})`)
-    } else {
-      console.warn(`[PayHere] No investment found for order ${order_id}`)
+    if (!investment) {
+      console.error(`[PayHere] No investment found for order ${order_id}`)
     }
 
     res.sendStatus(200)

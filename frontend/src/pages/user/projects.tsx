@@ -47,27 +47,10 @@ import Footer from '../../components/layout/Footer'
 import UserNavbar from '@/components/user/UserNavbar'
 import InvestorSidebar from '@/components/user/InvestorSidebar'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
-
-type CommentItem = {
-  _id: string
-  project: string
-  user?: {
-    _id?: string
-    firstName?: string
-    lastName?: string
-  }
-  userName?: string
-  text: string
-  createdAt: string
-}
-
-const STATUS_COLOR: Record<string, any> = {
-  pending: 'warning', approved: 'success', rejected: 'error',
-  funded: 'primary', active: 'success', completed: 'info',
-}
 
 const scoreStyle = (s: number) =>
   s >= 70 ? { bg: '#d1fae5', color: '#065f46' }
@@ -94,12 +77,9 @@ export default function InvestorDashboard() {
   const [activeTab, setActiveTab] = useState(0)
   const [investDialog, setInvestDialog] = useState(false)
   const [investAmount, setInvestAmount] = useState('')
-  const [comments, setComments] = useState<CommentItem[]>([])
-  const [commentsLoading, setCommentsLoading] = useState(false)
-  const [commentText, setCommentText] = useState('')
-  const [submittingComment, setSubmittingComment] = useState(false)
   const [toast, setToast] = useState<{ open: boolean; msg: string; type: 'success' | 'error' }>({ open: false, msg: '', type: 'success' })
   const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [kycStatus, setKycStatus] = useState<'approved' | 'pending' | 'rejected' | 'none' | 'loading'>('loading')
 
   // Auth guard
   useEffect(() => {
@@ -113,6 +93,22 @@ export default function InvestorDashboard() {
         if (img) setProfileImage(img)
       } catch {}
     }
+
+    // Fetch KYC status to show warning banner
+    const fetchKyc = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/kyc/my`, {
+          headers: { Authorization: `Bearer ${storedToken}` },
+        })
+        if (res.status === 404) { setKycStatus('none'); return }
+        const data = await res.json()
+        if (data.success) setKycStatus(data.data.status)
+        else setKycStatus('none')
+      } catch {
+        setKycStatus('none')
+      }
+    }
+    fetchKyc()
   }, [])
 
   // Fetch projects
@@ -120,21 +116,11 @@ export default function InvestorDashboard() {
     fetchProjects()
   }, [])
 
-  useEffect(() => {
-    if (!selectedProject?._id) {
-      setComments([])
-      setCommentText('')
-      return
-    }
-
-    fetchProjectComments(selectedProject._id)
-  }, [selectedProject?._id])
-
   const fetchProjects = async () => {
     setLoading(true)
     try {
       const authToken = token || localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/projects', {
+      const res = await fetch(`${API_BASE}/projects`, {
         headers: { Authorization: `Bearer ${authToken}` },
       })
       const data = await res.json()
@@ -149,65 +135,6 @@ export default function InvestorDashboard() {
       console.error('Failed to fetch projects', err)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const fetchProjectComments = async (projectId: string) => {
-    setCommentsLoading(true)
-    try {
-      const res = await fetch(`${API_BASE_URL}/projects/${projectId}/comments`)
-      const data = await res.json()
-
-      if (data.success) {
-        setComments(Array.isArray(data.data) ? data.data : [])
-      } else {
-        setComments([])
-      }
-    } catch (err) {
-      setComments([])
-    } finally {
-      setCommentsLoading(false)
-    }
-  }
-
-  const handleSubmitComment = async () => {
-    if (!selectedProject?._id) return
-
-    const trimmed = commentText.trim()
-    if (!trimmed) {
-      setToast({ open: true, msg: 'Comment cannot be empty.', type: 'error' })
-      return
-    }
-
-    setSubmittingComment(true)
-    try {
-      const authToken = token || localStorage.getItem('token')
-      if (!authToken) {
-        setToast({ open: true, msg: 'Please log in to add a comment.', type: 'error' })
-        return
-      }
-
-      const res = await fetch(`${API_BASE_URL}/projects/${selectedProject._id}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ text: trimmed }),
-      })
-
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || data.error || 'Failed to add comment')
-      }
-
-      setCommentText('')
-      await fetchProjectComments(selectedProject._id)
-      setToast({ open: true, msg: 'Comment added successfully.', type: 'success' })
-    } catch (err: any) {
-      setToast({ open: true, msg: err.message || 'Failed to add comment.', type: 'error' })
-    } finally {
-      setSubmittingComment(false)
     }
   }
 
@@ -311,7 +238,6 @@ export default function InvestorDashboard() {
                   <Tab label="Overview" sx={{ textTransform: 'none', fontWeight: 600 }} />
                   <Tab label="Details" sx={{ textTransform: 'none', fontWeight: 600 }} />
                   <Tab label="Documents" sx={{ textTransform: 'none', fontWeight: 600 }} />
-                  <Tab label="Comments" sx={{ textTransform: 'none', fontWeight: 600 }} />
                 </Tabs>
 
                 <Box sx={{ p: 3 }}>
@@ -471,65 +397,6 @@ export default function InvestorDashboard() {
                     </Box>
                   )}
 
-                  {/* ── Comments tab ── */}
-                  {activeTab === 3 && (
-                    <Box>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, color: '#0a1940' }}>
-                        Comments
-                      </Typography>
-
-                      <Box sx={{ p: 2, border: '1px solid #e5e7eb', borderRadius: 2, mb: 2.5, bgcolor: '#fafafa' }}>
-                        <TextField
-                          fullWidth
-                          multiline
-                          minRows={3}
-                          placeholder="Write your comment..."
-                          value={commentText}
-                          onChange={(e) => setCommentText(e.target.value)}
-                          sx={{ mb: 1.5, '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#fff' } }}
-                        />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="caption" color="text.secondary">
-                            {commentText.trim().length} characters
-                          </Typography>
-                          <Button
-                            variant="contained"
-                            onClick={handleSubmitComment}
-                            disabled={submittingComment}
-                            sx={{ bgcolor: '#111111', textTransform: 'none', fontWeight: 700, borderRadius: 2, '&:hover': { bgcolor: '#000000' } }}
-                          >
-                            {submittingComment ? 'Posting...' : 'Post Comment'}
-                          </Button>
-                        </Box>
-                      </Box>
-
-                      {commentsLoading ? (
-                        <Typography variant="body2" color="text.secondary">Loading comments...</Typography>
-                      ) : comments.length === 0 ? (
-                        <Box sx={{ textAlign: 'center', py: 4, border: '1px dashed #d1d5db', borderRadius: 2 }}>
-                          <Typography variant="body2" color="text.secondary">No comments yet. Be the first to comment.</Typography>
-                        </Box>
-                      ) : (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                          {comments.map((comment) => (
-                            <Box key={comment._id} sx={{ p: 2, border: '1px solid #e5e7eb', borderRadius: 2, bgcolor: '#fff' }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.8 }}>
-                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#0a1940' }}>
-                                  {comment.userName || `${comment.user?.firstName || ''} ${comment.user?.lastName || ''}`.trim() || 'Anonymous User'}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {new Date(comment.createdAt).toLocaleString()}
-                                </Typography>
-                              </Box>
-                              <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
-                                {comment.text}
-                              </Typography>
-                            </Box>
-                          ))}
-                        </Box>
-                      )}
-                    </Box>
-                  )}
                 </Box>
               </Box>
             </Box>
@@ -645,11 +512,33 @@ export default function InvestorDashboard() {
         <UserNavbar user={user} profileImage={profileImage} onLogout={handleLogout} />
 
         {/* Body */}
-        <Box sx={{ flex: 1, maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, display: 'flex', gap: 3 }}>
+        <Box sx={{ flex: 1, maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
 
           <InvestorSidebar active="projects" />
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
+
+          {/* KYC warning banner for unverified investors */}
+          {kycStatus !== 'loading' && kycStatus !== 'approved' && (
+            <Alert
+              severity={kycStatus === 'pending' ? 'info' : 'warning'}
+              sx={{ mb: 3, borderRadius: 2 }}
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}
+                  onClick={() => router.push('/user/verifications')}
+                >
+                  {kycStatus === 'pending' ? 'View Status' : 'Verify Now'}
+                </Button>
+              }
+            >
+              {kycStatus === 'pending' && 'Your identity verification is pending admin review. You cannot invest until it is approved.'}
+              {kycStatus === 'rejected' && 'Your identity verification was rejected. Please resubmit your documents to start investing.'}
+              {kycStatus === 'none' && 'You must complete identity verification (KYC) before you can invest in any project.'}
+            </Alert>
+          )}
 
           {/* Header */}
           <Box sx={{ mb: 4 }}>

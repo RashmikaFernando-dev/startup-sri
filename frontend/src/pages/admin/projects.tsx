@@ -5,13 +5,21 @@ import type { Project } from '@/redux/slices/projectSlice'
 import {
   Box, Typography, Button, TextField, InputAdornment,
   Select, MenuItem, FormControl, InputLabel, Alert, Snackbar, LinearProgress,
+  Drawer, Divider, IconButton, Chip,
 } from '@mui/material'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import SearchIcon from '@mui/icons-material/Search'
+import CloseIcon from '@mui/icons-material/Close'
+import VisibilityIcon from '@mui/icons-material/Visibility'
+import DescriptionIcon from '@mui/icons-material/Description'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import AdminNavbar from '@/components/admin/AdminNavbar'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
 
 const CONTENT_LEFT = 240
 
@@ -34,6 +42,7 @@ export default function AdminProjects() {
   const [toast, setToast] = useState<{ open: boolean; msg: string; type: 'success' | 'error' }>({ open: false, msg: '', type: 'success' })
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; title: string; body: string; onConfirm: () => void }>({ open: false, title: '', body: '', onConfirm: () => {} })
   const [justApproved, setJustApproved] = useState<Project | null>(null)
+  const [selectedProject, setSelectedProject] = useState<any>(null)
 
   useEffect(() => {
     const stored = localStorage.getItem('adminUser')
@@ -54,7 +63,7 @@ export default function AdminProjects() {
   const fetchProjects = async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:5000/api/admin/projects', { headers: { Authorization: `Bearer ${token()}` } })
+      const res = await fetch(`${API_BASE}/admin/projects`, { headers: { Authorization: `Bearer ${token()}` } })
       const data = await res.json()
       if (data.success) setProjects(data.data)
     } catch {} finally { setLoading(false) }
@@ -62,18 +71,20 @@ export default function AdminProjects() {
 
   const updateProjectStatus = async (id: string, status: Project['status']) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/projects/${id}/status`, {
+      const res = await fetch(`${API_BASE}/admin/projects/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
         body: JSON.stringify({ status }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message)
-      const updated = { ...projects.find(p => p._id === id)!, status }
+      const serverProject = data.data
+      const updated = { ...projects.find(p => p._id === id)!, status, proposalId: serverProject?.proposalId, qrCode: serverProject?.qrCode }
       setProjects(prev => prev.map(p => p._id === id ? updated : p))
+      setSelectedProject(null)
       if (status === 'approved') {
         setJustApproved(updated)
-        setTimeout(() => setJustApproved(null), 3000)
+        setTimeout(() => setJustApproved(null), 5000)
       } else {
         setToast({ open: true, msg: `Project ${status} successfully.`, type: 'success' })
       }
@@ -118,6 +129,11 @@ export default function AdminProjects() {
           <Box>
             <Typography sx={{ fontWeight: 800, color: '#111827', fontSize: 14 }}>Approved!</Typography>
             <Typography sx={{ fontSize: 12, color: '#6b7280' }}>"{justApproved.title}" is now live for investors.</Typography>
+            {(justApproved as any).proposalId && (
+              <Typography sx={{ fontSize: 12, color: '#1d4ed8', fontWeight: 700, fontFamily: 'monospace', mt: 0.5 }}>
+                Proposal ID: {(justApproved as any).proposalId}
+              </Typography>
+            )}
           </Box>
         </Box>
       )}
@@ -193,7 +209,12 @@ export default function AdminProjects() {
                         transition: 'background 0.12s',
                       }}>
                         <Box component="td" sx={{ px: 3, py: 2.5, minWidth: 180 }}>
-                          <Typography sx={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>{p.title}</Typography>
+                          <Typography
+                            sx={{ fontSize: 14, fontWeight: 700, color: '#111827', cursor: 'pointer', '&:hover': { color: '#1d4ed8', textDecoration: 'underline' } }}
+                            onClick={() => setSelectedProject(p)}
+                          >
+                            {p.title}
+                          </Typography>
                           <Typography sx={{ fontSize: 12, color: '#9ca3af' }}>{p.entrepreneur?.firstName} {p.entrepreneur?.lastName}</Typography>
                           <Typography sx={{ fontSize: 11, color: '#d1d5db' }}>{p.entrepreneur?.email}</Typography>
                         </Box>
@@ -219,30 +240,49 @@ export default function AdminProjects() {
                           </Box>
                         </Box>
                         <Box component="td" sx={{ px: 3, py: 2.5 }}>
-                          {p.status === 'pending' ? (
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              <Button
-                                size="small"
-                                variant="contained"
-                                startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
-                                onClick={() => confirm('Approve Project', `Approve "${p.title}"?`, () => updateProjectStatus(p._id, 'approved'))}
-                                sx={{ bgcolor: '#111827', borderRadius: 1.5, textTransform: 'none', fontWeight: 700, fontSize: 12, '&:hover': { bgcolor: '#1f2937' } }}
+                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<VisibilityIcon sx={{ fontSize: 14 }} />}
+                              onClick={() => setSelectedProject(p)}
+                              sx={{ borderRadius: 1.5, textTransform: 'none', fontSize: 12, fontWeight: 700, borderColor: '#e5e7eb', color: '#374151', '&:hover': { borderColor: '#111827', bgcolor: '#f9fafb' } }}
+                            >
+                              View
+                            </Button>
+                            {p.status === 'pending' && (
+                              <>
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  startIcon={<CheckCircleIcon sx={{ fontSize: 14 }} />}
+                                  onClick={() => confirm('Approve Project', `Approve "${p.title}"?`, () => updateProjectStatus(p._id, 'approved'))}
+                                  sx={{ bgcolor: '#111827', borderRadius: 1.5, textTransform: 'none', fontWeight: 700, fontSize: 12, '&:hover': { bgcolor: '#1f2937' } }}
+                                >
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  startIcon={<CancelIcon sx={{ fontSize: 14 }} />}
+                                  onClick={() => confirm('Reject Project', `Reject "${p.title}"?`, () => updateProjectStatus(p._id, 'rejected'))}
+                                  sx={{ borderRadius: 1.5, textTransform: 'none', fontSize: 12, borderColor: '#e5e7eb', color: '#ef4444', '&:hover': { borderColor: '#ef4444', bgcolor: '#fef2f2' } }}
+                                >
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                            {(p as any).proposalId && (
+                              <Typography
+                                component="a"
+                                href={`/verify/${(p as any).proposalId}`}
+                                target="_blank"
+                                sx={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', fontFamily: 'monospace', textDecoration: 'underline', cursor: 'pointer' }}
                               >
-                                Approve
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<CancelIcon sx={{ fontSize: 14 }} />}
-                                onClick={() => confirm('Reject Project', `Reject "${p.title}"?`, () => updateProjectStatus(p._id, 'rejected'))}
-                                sx={{ borderRadius: 1.5, textTransform: 'none', fontSize: 12, borderColor: '#e5e7eb', color: '#ef4444', '&:hover': { borderColor: '#ef4444', bgcolor: '#fef2f2' } }}
-                              >
-                                Reject
-                              </Button>
-                            </Box>
-                          ) : (
-                            <Typography sx={{ fontSize: 12, color: '#d1d5db' }}>—</Typography>
-                          )}
+                                {(p as any).proposalId}
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
                       </Box>
                     )
@@ -261,6 +301,168 @@ export default function AdminProjects() {
         </Box>
       </Box>
 
+      {/* ── Project Detail Drawer ── */}
+      <Drawer
+        anchor="right"
+        open={!!selectedProject}
+        onClose={() => setSelectedProject(null)}
+        PaperProps={{ sx: { width: { xs: '100%', sm: 480 }, bgcolor: '#f9fafb' } }}
+      >
+        {selectedProject && (() => {
+          const p = selectedProject
+          const sc = STATUS_COLORS[p.status] ?? { bg: '#f3f4f6', text: '#374151', label: p.status }
+          const progress = Math.min(Math.round(((p.currentFunding || 0) / p.fundingGoal) * 100), 100)
+          const docs = p.documents || {}
+          const hasAnyDoc = docs.businessPlan || docs.budgetBreakdown || docs.businessRegCertificate
+          return (
+            <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+              {/* Header */}
+              <Box sx={{ px: 3, py: 2.5, bgcolor: '#fff', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ flex: 1 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: 18, color: '#0a1940' }}>{p.title}</Typography>
+                  <Typography sx={{ fontSize: 13, color: '#6b7280' }}>
+                    by {p.entrepreneur?.firstName} {p.entrepreneur?.lastName}
+                  </Typography>
+                </Box>
+                <IconButton onClick={() => setSelectedProject(null)} size="small">
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+
+              {/* Scrollable content */}
+              <Box sx={{ flex: 1, overflow: 'auto', px: 3, py: 3, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+
+                {/* Status + Date */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Chip label={sc.label} size="small" sx={{ bgcolor: sc.bg, color: sc.text, fontWeight: 700, fontSize: 12 }} />
+                  <Typography sx={{ fontSize: 12, color: '#9ca3af' }}>
+                    Submitted {new Date(p.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </Typography>
+                </Box>
+
+                {/* Proposal ID */}
+                {p.proposalId && (
+                  <Box sx={{ bgcolor: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 2, px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#4338ca', fontFamily: 'monospace' }}>{p.proposalId}</Typography>
+                    <Typography
+                      component="a"
+                      href={`/verify/${p.proposalId}`}
+                      target="_blank"
+                      sx={{ fontSize: 12, color: '#6366f1', display: 'flex', alignItems: 'center', gap: 0.3, '&:hover': { textDecoration: 'underline' } }}
+                    >
+                      Certificate <OpenInNewIcon sx={{ fontSize: 12 }} />
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Description */}
+                <Box sx={{ bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb', p: 2.5 }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1 }}>Description</Typography>
+                  <Typography sx={{ fontSize: 13, color: '#374151', lineHeight: 1.7 }}>{p.description}</Typography>
+                  {p.longDescription && (
+                    <Typography sx={{ fontSize: 13, color: '#6b7280', lineHeight: 1.7, mt: 1.5 }}>{p.longDescription}</Typography>
+                  )}
+                </Box>
+
+                {/* Business Info */}
+                {(p.businessName || p.businessType || p.businessRegNumber) && (
+                  <Box sx={{ bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb', p: 2.5 }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5 }}>Business Information</Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {p.businessName && <DetailRow label="Business Name" value={p.businessName} />}
+                      {p.businessType && <DetailRow label="Business Type" value={p.businessType} />}
+                      {p.businessRegNumber && <DetailRow label="Reg. Number" value={p.businessRegNumber} />}
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Funding Details */}
+                <Box sx={{ bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb', p: 2.5 }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5 }}>Funding Details</Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <DetailRow label="Category" value={p.category} />
+                    <DetailRow label="Funding Type" value={p.fundingType === 'equity' ? 'Equity' : 'Microloan'} />
+                    <DetailRow label="Funding Goal" value={fmt(p.fundingGoal)} />
+                    <DetailRow label="Current Funding" value={fmt(p.currentFunding || 0)} />
+                    <Box sx={{ mt: 0.5 }}>
+                      <LinearProgress variant="determinate" value={progress} sx={{ height: 6, borderRadius: 3, bgcolor: '#f3f4f6', '& .MuiLinearProgress-bar': { bgcolor: '#111827' } }} />
+                      <Typography sx={{ fontSize: 11, color: '#9ca3af', mt: 0.5, textAlign: 'right' }}>{progress}% funded</Typography>
+                    </Box>
+                    {p.fundingType === 'microloan' ? (
+                      <>
+                        {p.interestRate != null && <DetailRow label="Interest Rate" value={`${p.interestRate}% p.a.`} />}
+                        {p.duration != null && <DetailRow label="Duration" value={`${p.duration} months`} />}
+                      </>
+                    ) : (
+                      p.equityOffered != null && <DetailRow label="Equity Offered" value={`${p.equityOffered}%`} />
+                    )}
+                  </Box>
+                </Box>
+
+                {/* Documents */}
+                {hasAnyDoc && (
+                  <Box sx={{ bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb', p: 2.5 }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5 }}>Documents</Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {docs.businessPlan && (
+                        <DocLink label="Business Plan" url={docs.businessPlan} />
+                      )}
+                      {docs.budgetBreakdown && (
+                        <DocLink label="Budget Breakdown" url={docs.budgetBreakdown} />
+                      )}
+                      {docs.businessRegCertificate && (
+                        <DocLink label="Registration Certificate" url={docs.businessRegCertificate} />
+                      )}
+                    </Box>
+                  </Box>
+                )}
+
+                {/* Entrepreneur Contact */}
+                <Box sx={{ bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb', p: 2.5 }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5 }}>Entrepreneur</Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    <DetailRow label="Name" value={`${p.entrepreneur?.firstName || ''} ${p.entrepreneur?.lastName || ''}`.trim() || 'N/A'} />
+                    <DetailRow label="Email" value={p.entrepreneur?.email || 'N/A'} />
+                  </Box>
+                </Box>
+
+                {/* QR Code */}
+                {p.qrCode && (
+                  <Box sx={{ bgcolor: '#fff', borderRadius: 2.5, border: '1px solid #e5e7eb', p: 2.5, textAlign: 'center' }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1.5 }}>QR Code</Typography>
+                    <Box component="img" src={p.qrCode} alt="QR Code" sx={{ width: 140, height: 140, mx: 'auto' }} />
+                  </Box>
+                )}
+              </Box>
+
+              {/* Footer actions for pending projects */}
+              {p.status === 'pending' && (
+                <Box sx={{ px: 3, py: 2.5, bgcolor: '#fff', borderTop: '1px solid #e5e7eb', display: 'flex', gap: 1.5 }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={<CheckCircleIcon />}
+                    onClick={() => confirm('Approve Project', `Approve "${p.title}"?`, () => updateProjectStatus(p._id, 'approved'))}
+                    sx={{ bgcolor: '#16a34a', borderRadius: 2, textTransform: 'none', fontWeight: 700, fontSize: 14, py: 1.2, '&:hover': { bgcolor: '#15803d' } }}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<CancelIcon />}
+                    onClick={() => confirm('Reject Project', `Reject "${p.title}"?`, () => updateProjectStatus(p._id, 'rejected'))}
+                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, fontSize: 14, py: 1.2, borderColor: '#fca5a5', color: '#dc2626', '&:hover': { borderColor: '#dc2626', bgcolor: '#fef2f2' } }}
+                  >
+                    Reject
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          )
+        })()}
+      </Drawer>
+
       <ConfirmDialog
         open={confirmDialog.open}
         title={confirmDialog.title}
@@ -273,5 +475,35 @@ export default function AdminProjects() {
         <Alert severity={toast.type} variant="filled" sx={{ width: '100%' }}>{toast.msg}</Alert>
       </Snackbar>
     </>
+  )
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Typography sx={{ fontSize: 13, color: '#6b7280', fontWeight: 600 }}>{label}</Typography>
+      <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#111827', textAlign: 'right', maxWidth: '60%', wordBreak: 'break-word' }}>{value}</Typography>
+    </Box>
+  )
+}
+
+function DocLink({ label, url }: { label: string; url: string }) {
+  return (
+    <Box
+      component="a"
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      sx={{
+        display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5,
+        bgcolor: '#f9fafb', borderRadius: 2, border: '1px solid #e5e7eb',
+        textDecoration: 'none', '&:hover': { bgcolor: '#f0f4ff', borderColor: '#c7d2fe' },
+        transition: 'all 0.15s',
+      }}
+    >
+      <DescriptionIcon sx={{ fontSize: 20, color: '#6366f1' }} />
+      <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#374151', flex: 1 }}>{label}</Typography>
+      <OpenInNewIcon sx={{ fontSize: 14, color: '#9ca3af' }} />
+    </Box>
   )
 }

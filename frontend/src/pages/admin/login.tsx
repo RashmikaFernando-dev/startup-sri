@@ -20,6 +20,9 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import HomeIcon from '@mui/icons-material/Home'
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
 export default function AdminLogin() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -40,7 +43,7 @@ export default function AdminLogin() {
 
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

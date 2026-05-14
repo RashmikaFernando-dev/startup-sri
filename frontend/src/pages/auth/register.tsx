@@ -27,6 +27,9 @@ import PeopleIcon from '@mui/icons-material/People'
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
 const validationSchema = Yup.object({
   firstName: Yup.string()
     .min(2, 'First name must be at least 2 characters')
@@ -80,7 +83,7 @@ export default function Register() {
       dispatch(loginStart())
 
       try {
-        const res = await fetch('http://localhost:5000/api/auth/register', {
+        const res = await fetch(`${API_BASE}/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

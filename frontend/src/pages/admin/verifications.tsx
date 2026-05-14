@@ -12,6 +12,9 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew'
 import AdminNavbar from '@/components/admin/AdminNavbar'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
 const CONTENT_LEFT = 240
 
 interface KycRecord {
@@ -96,7 +99,7 @@ export default function AdminKycReview() {
   const fetchRecords = async () => {
     setLoading(true)
     try {
-      const url = `http://localhost:5000/api/kyc/admin/list${statusFilter && statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`
+      const url = `${API_BASE}/kyc/admin/list${statusFilter && statusFilter !== 'all' ? `?status=${statusFilter}` : ''}`
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token()}` } })
       const data = await res.json()
       if (data.success) setRecords(data.data)
@@ -119,7 +122,7 @@ export default function AdminKycReview() {
     setReviewError(null)
     setSubmitting(true)
     try {
-      const res = await fetch(`http://localhost:5000/api/kyc/admin/${selected!._id}/review`, {
+      const res = await fetch(`${API_BASE}/kyc/admin/${selected!._id}/review`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
         body: JSON.stringify({ status: reviewAction, rejectionReason: rejectionReason.trim() || undefined }),

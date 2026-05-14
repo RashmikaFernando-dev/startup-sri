@@ -5,6 +5,9 @@ import { Box, Typography, Select, MenuItem, FormControl, InputLabel } from '@mui
 import AdminNavbar from '@/components/admin/AdminNavbar'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
 const CONTENT_LEFT = 240
 
 const TYPE_COLOR: Record<string, { bg: string; text: string }> = {
@@ -45,7 +48,7 @@ export default function AdminTransactions() {
       const params = new URLSearchParams()
       if (typeFilter !== 'all') params.set('type', typeFilter)
       if (statusFilter !== 'all') params.set('status', statusFilter)
-      const res = await fetch(`http://localhost:5000/api/admin/transactions?${params}`, {
+      const res = await fetch(`${API_BASE}/admin/transactions?${params}`, {
         headers: { Authorization: `Bearer ${token()}` },
       })
       const data = await res.json()

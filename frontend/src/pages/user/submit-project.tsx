@@ -25,9 +25,14 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import UserNavbar from '@/components/user/UserNavbar'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
 const CATEGORIES = ['Software', 'Hardware', 'SaaS', 'Mobile App', 'Web Platform', 'AI/ML', 'Other']
 
-const STEPS = ['Basic Info', 'Funding Details', 'Documents', 'Review & Submit']
+const STEPS = ['Basic Info', 'Business Info', 'Funding Details', 'Documents', 'Review & Submit']
+
+const BUSINESS_TYPES = ['Startup', 'SME', 'Idea Stage']
 
 interface User {
   id: string
@@ -52,14 +57,21 @@ export default function SubmitProject() {
     description: '',
     longDescription: '',
     category: '',
+    businessName: '',
+    businessRegNumber: '',
+    businessType: '',
     fundingType: 'microloan',
     fundingGoal: '',
     interestRate: '',
     equityOffered: '',
     duration: '',
     businessPlan: '',
+    budgetBreakdown: '',
+    businessRegCertificate: '',
   })
   const [uploadedFile, setUploadedFile] = useState<{ name: string; url: string } | null>(null)
+  const [uploadedBudget, setUploadedBudget] = useState<{ name: string; url: string } | null>(null)
+  const [uploadedRegCert, setUploadedRegCert] = useState<{ name: string; url: string } | null>(null)
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
@@ -72,7 +84,7 @@ export default function SubmitProject() {
     if (img) setProfileImage(img)
 
     // Check KYC status
-    fetch('http://localhost:5000/api/kyc/my', { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API_BASE}/kyc/my`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(data => {
         if (data.success) setKycStatus(data.data.status)
@@ -83,7 +95,11 @@ export default function SubmitProject() {
 
   const set = (key: string, value: string) => setForm(f => ({ ...f, [key]: value }))
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const uploadFile = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    formKey: string,
+    setFile: (f: { name: string; url: string } | null) => void,
+  ) => {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
@@ -91,15 +107,15 @@ export default function SubmitProject() {
       const token = localStorage.getItem('token')
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch('http://localhost:5000/api/upload', {
+      const res = await fetch(`${API_BASE}/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: fd,
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message)
-      setUploadedFile({ name: file.name, url: data.url })
-      set('businessPlan', data.url)
+      setFile({ name: file.name, url: data.url })
+      set(formKey, data.url)
       setToast({ open: true, msg: 'Document uploaded successfully.', type: 'success' })
     } catch (err: any) {
       setToast({ open: true, msg: err.message || 'Upload failed.', type: 'error' })
@@ -109,9 +125,9 @@ export default function SubmitProject() {
     }
   }
 
-  const removeFile = () => {
-    setUploadedFile(null)
-    set('businessPlan', '')
+  const removeFile = (formKey: string, setFile: (f: null) => void) => {
+    setFile(null)
+    set(formKey, '')
   }
 
   const validateStep = () => {
@@ -121,6 +137,10 @@ export default function SubmitProject() {
       if (!form.category) { setToast({ open: true, msg: 'Please select a category.', type: 'error' }); return false }
     }
     if (step === 1) {
+      if (!form.businessName.trim()) { setToast({ open: true, msg: 'Business name is required.', type: 'error' }); return false }
+      if (!form.businessType) { setToast({ open: true, msg: 'Please select a business type.', type: 'error' }); return false }
+    }
+    if (step === 2) {
       const goal = Number(form.fundingGoal)
       if (!form.fundingGoal || goal < 100000 || goal > 5000000) {
         setToast({ open: true, msg: 'Funding goal must be between LKR 100,000 and LKR 5,000,000.', type: 'error' }); return false
@@ -154,18 +174,25 @@ export default function SubmitProject() {
         title: form.title.trim(),
         description: form.description.trim(),
         category: form.category,
+        businessName: form.businessName.trim(),
+        businessType: form.businessType,
         fundingType: form.fundingType,
         fundingGoal: Number(form.fundingGoal),
       }
       if (form.longDescription.trim()) body.longDescription = form.longDescription.trim()
+      if (form.businessRegNumber.trim()) body.businessRegNumber = form.businessRegNumber.trim()
       if (form.fundingType === 'microloan') {
         body.interestRate = Number(form.interestRate)
         body.duration = Number(form.duration)
       } else {
         body.equityOffered = Number(form.equityOffered)
       }
-      if (form.businessPlan.trim()) body.documents = { businessPlan: form.businessPlan.trim() }
-      const res = await fetch('http://localhost:5000/api/projects', {
+      const docs: any = {}
+      if (form.businessPlan.trim()) docs.businessPlan = form.businessPlan.trim()
+      if (form.budgetBreakdown.trim()) docs.budgetBreakdown = form.budgetBreakdown.trim()
+      if (form.businessRegCertificate.trim()) docs.businessRegCertificate = form.businessRegCertificate.trim()
+      if (Object.keys(docs).length > 0) body.documents = docs
+      const res = await fetch(`${API_BASE}/projects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
@@ -211,7 +238,7 @@ export default function SubmitProject() {
                   Go to Dashboard
                 </Button>
                 <Button variant="outlined"
-                  onClick={() => { setSubmitted(false); setStep(0); setUploadedFile(null); setForm({ title: '', description: '', longDescription: '', category: '', fundingType: 'microloan', fundingGoal: '', interestRate: '', equityOffered: '', duration: '', businessPlan: '' }) }}
+                  onClick={() => { setSubmitted(false); setStep(0); setUploadedFile(null); setUploadedBudget(null); setUploadedRegCert(null); setForm({ title: '', description: '', longDescription: '', category: '', businessName: '', businessRegNumber: '', businessType: '', fundingType: 'microloan', fundingGoal: '', interestRate: '', equityOffered: '', duration: '', businessPlan: '', budgetBreakdown: '', businessRegCertificate: '' }) }}
                   sx={{ borderRadius: 2, textTransform: 'none', borderColor: '#d1d5db', color: '#374151' }}>
                   Submit Another
                 </Button>
@@ -295,7 +322,7 @@ export default function SubmitProject() {
               </Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {[
-                  { step: '01', title: 'Complete KYC Verification', desc: 'Upload your NIC, proof of address and any business documents for identity verification.' },
+                  { step: '01', title: 'Complete KYC Verification', desc: 'Upload your NIC and proof of address for identity verification.' },
                   { step: '02', title: 'Admin Reviews Your Documents', desc: 'Our team reviews your submission and approves or requests corrections within 1–2 business days.' },
                   { step: '03', title: 'Submit Your Project', desc: 'Once approved, you can create your startup listing and start raising funds from investors.' },
                 ].map(item => (
@@ -386,8 +413,32 @@ export default function SubmitProject() {
               </Box>
             )}
 
-            {/* ── Step 1: Funding Details ── */}
+            {/* ── Step 1: Business Information ── */}
             {step === 1 && (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1940' }}>Business Information</Typography>
+                <Divider />
+                <TextField
+                  label="Business / Startup Name *" fullWidth value={form.businessName}
+                  onChange={e => set('businessName', e.target.value)}
+                  helperText="The name of your company or startup"
+                />
+                <TextField
+                  label="Business Registration Number" fullWidth value={form.businessRegNumber}
+                  onChange={e => set('businessRegNumber', e.target.value)}
+                  helperText="Optional — leave blank if you're at idea stage"
+                />
+                <FormControl fullWidth>
+                  <InputLabel>Business Type *</InputLabel>
+                  <Select value={form.businessType} label="Business Type *" onChange={e => set('businessType', e.target.value)}>
+                    {BUSINESS_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Box>
+            )}
+
+            {/* ── Step 2: Funding Details ── */}
+            {step === 2 && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1940' }}>Funding Details</Typography>
                 <Divider />
@@ -428,63 +479,110 @@ export default function SubmitProject() {
               </Box>
             )}
 
-            {/* ── Step 2: Documents ── */}
-            {step === 2 && (
+            {/* ── Step 3: Documents ── */}
+            {step === 3 && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1940' }}>Documents</Typography>
                 <Divider />
-                <Typography variant="body2" color="text.secondary">
-                  Upload your business plan or proposal document (optional). Accepted formats: PDF, Word, PowerPoint, images (max 10 MB).
-                </Typography>
 
+                {/* Business Plan */}
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#374151' }}>
+                  Business Plan / Proposal Document
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: -1.5 }}>
+                  Upload your business plan or proposal document (optional). PDF, Word, PowerPoint or image · max 10 MB.
+                </Typography>
                 {!uploadedFile ? (
-                  <Box
-                    component="label"
-                    sx={{
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                      border: '2px dashed #d1d5db', borderRadius: 3, p: 5, cursor: 'pointer', bgcolor: '#fafafa',
-                      '&:hover': { borderColor: '#0a1940', bgcolor: '#f0f4ff' }, transition: 'all 0.2s',
-                    }}
-                  >
-                    <input type="file" hidden accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg" onChange={handleFileUpload} />
+                  <Box component="label" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #d1d5db', borderRadius: 3, p: 4, cursor: 'pointer', bgcolor: '#fafafa', '&:hover': { borderColor: '#0a1940', bgcolor: '#f0f4ff' }, transition: 'all 0.2s' }}>
+                    <input type="file" hidden accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg" onChange={e => uploadFile(e, 'businessPlan', setUploadedFile)} />
                     {uploading ? (
-                      <>
-                        <CircularProgress size={36} sx={{ mb: 1.5, color: '#0a1940' }} />
-                        <Typography variant="body2" color="text.secondary">Uploading…</Typography>
-                      </>
+                      <><CircularProgress size={32} sx={{ mb: 1, color: '#0a1940' }} /><Typography variant="body2" color="text.secondary">Uploading…</Typography></>
                     ) : (
-                      <>
-                        <UploadFileIcon sx={{ fontSize: 44, color: '#9ca3af', mb: 1.5 }} />
-                        <Typography sx={{ fontWeight: 700, color: '#374151', mb: 0.5 }}>Click to upload document</Typography>
-                        <Typography variant="body2" color="text.secondary">PDF, Word, PowerPoint or image · max 10 MB</Typography>
-                      </>
+                      <><UploadFileIcon sx={{ fontSize: 36, color: '#9ca3af', mb: 1 }} /><Typography sx={{ fontWeight: 700, color: '#374151', fontSize: 13 }}>Click to upload Business Plan</Typography></>
                     )}
                   </Box>
                 ) : (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#f0fdf4', border: '1px solid #86efac', borderRadius: 2.5, p: 2.5 }}>
-                    <InsertDriveFileIcon sx={{ fontSize: 36, color: '#16a34a', flexShrink: 0 }} />
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#f0fdf4', border: '1px solid #86efac', borderRadius: 2.5, p: 2 }}>
+                    <InsertDriveFileIcon sx={{ fontSize: 30, color: '#16a34a', flexShrink: 0 }} />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography sx={{ fontWeight: 700, color: '#166534', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {uploadedFile.name}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: '#16a34a', fontSize: 12 }}>Uploaded successfully</Typography>
+                      <Typography sx={{ fontWeight: 700, color: '#166534', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uploadedFile.name}</Typography>
+                      <Typography variant="body2" sx={{ color: '#16a34a', fontSize: 11 }}>Uploaded successfully</Typography>
                     </Box>
-                    <Button size="small" onClick={removeFile} startIcon={<DeleteOutlineIcon />}
-                      sx={{ color: '#dc2626', textTransform: 'none', flexShrink: 0 }}>
-                      Remove
-                    </Button>
+                    <Button size="small" onClick={() => removeFile('businessPlan', setUploadedFile)} startIcon={<DeleteOutlineIcon />} sx={{ color: '#dc2626', textTransform: 'none', flexShrink: 0 }}>Remove</Button>
+                  </Box>
+                )}
+
+                <Divider />
+
+                {/* Budget Breakdown */}
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#374151' }}>
+                  Budget Breakdown
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: -1.5 }}>
+                  Upload a breakdown of how funding will be used. PDF or Excel · max 10 MB.
+                </Typography>
+                {!uploadedBudget ? (
+                  <Box component="label" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #d1d5db', borderRadius: 3, p: 4, cursor: 'pointer', bgcolor: '#fafafa', '&:hover': { borderColor: '#0a1940', bgcolor: '#f0f4ff' }, transition: 'all 0.2s' }}>
+                    <input type="file" hidden accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" onChange={e => uploadFile(e, 'budgetBreakdown', setUploadedBudget)} />
+                    {uploading ? (
+                      <><CircularProgress size={32} sx={{ mb: 1, color: '#0a1940' }} /><Typography variant="body2" color="text.secondary">Uploading…</Typography></>
+                    ) : (
+                      <><UploadFileIcon sx={{ fontSize: 36, color: '#9ca3af', mb: 1 }} /><Typography sx={{ fontWeight: 700, color: '#374151', fontSize: 13 }}>Click to upload Budget Breakdown</Typography></>
+                    )}
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#f0fdf4', border: '1px solid #86efac', borderRadius: 2.5, p: 2 }}>
+                    <InsertDriveFileIcon sx={{ fontSize: 30, color: '#16a34a', flexShrink: 0 }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 700, color: '#166534', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uploadedBudget.name}</Typography>
+                      <Typography variant="body2" sx={{ color: '#16a34a', fontSize: 11 }}>Uploaded successfully</Typography>
+                    </Box>
+                    <Button size="small" onClick={() => removeFile('budgetBreakdown', setUploadedBudget)} startIcon={<DeleteOutlineIcon />} sx={{ color: '#dc2626', textTransform: 'none', flexShrink: 0 }}>Remove</Button>
+                  </Box>
+                )}
+
+                <Divider />
+
+                {/* Business Registration Certificate */}
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#374151' }}>
+                  Business Registration Certificate <Typography component="span" sx={{ fontSize: 12, color: '#9ca3af' }}>(Optional)</Typography>
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: -1.5 }}>
+                  If you have a registered business, upload the certificate. PDF or image · max 10 MB.
+                </Typography>
+                {!uploadedRegCert ? (
+                  <Box component="label" sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '2px dashed #d1d5db', borderRadius: 3, p: 4, cursor: 'pointer', bgcolor: '#fafafa', '&:hover': { borderColor: '#0a1940', bgcolor: '#f0f4ff' }, transition: 'all 0.2s' }}>
+                    <input type="file" hidden accept=".pdf,.png,.jpg,.jpeg" onChange={e => uploadFile(e, 'businessRegCertificate', setUploadedRegCert)} />
+                    {uploading ? (
+                      <><CircularProgress size={32} sx={{ mb: 1, color: '#0a1940' }} /><Typography variant="body2" color="text.secondary">Uploading…</Typography></>
+                    ) : (
+                      <><UploadFileIcon sx={{ fontSize: 36, color: '#9ca3af', mb: 1 }} /><Typography sx={{ fontWeight: 700, color: '#374151', fontSize: 13 }}>Click to upload Registration Certificate</Typography></>
+                    )}
+                  </Box>
+                ) : (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: '#f0fdf4', border: '1px solid #86efac', borderRadius: 2.5, p: 2 }}>
+                    <InsertDriveFileIcon sx={{ fontSize: 30, color: '#16a34a', flexShrink: 0 }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 700, color: '#166534', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uploadedRegCert.name}</Typography>
+                      <Typography variant="body2" sx={{ color: '#16a34a', fontSize: 11 }}>Uploaded successfully</Typography>
+                    </Box>
+                    <Button size="small" onClick={() => removeFile('businessRegCertificate', setUploadedRegCert)} startIcon={<DeleteOutlineIcon />} sx={{ color: '#dc2626', textTransform: 'none', flexShrink: 0 }}>Remove</Button>
                   </Box>
                 )}
               </Box>
             )}
 
-            {/* ── Step 3: Review ── */}
-            {step === 3 && (
+            {/* ── Step 4: Review ── */}
+            {step === 4 && (
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: '#0a1940' }}>Review Your Listing</Typography>
                 <Divider />
                 <ReviewRow label="Project Title" value={form.title} />
                 <ReviewRow label="Category" value={form.category} />
+                <ReviewRow label="Business Name" value={form.businessName} />
+                <ReviewRow label="Business Type" value={form.businessType} />
+                {form.businessRegNumber && <ReviewRow label="Reg. Number" value={form.businessRegNumber} />}
+                <Divider />
                 <ReviewRow label="Funding Type" value={form.fundingType === 'microloan' ? 'Microloan' : 'Equity'} />
                 <ReviewRow label="Funding Goal" value={fmt(form.fundingGoal)} />
                 {form.fundingType === 'microloan' ? (
@@ -500,12 +598,10 @@ export default function SubmitProject() {
                   <Typography variant="body2" sx={{ fontWeight: 700, color: '#0369a1', mb: 0.5 }}>Description</Typography>
                   <Typography variant="body2" color="text.secondary">{form.description}</Typography>
                 </Box>
-                {form.businessPlan && (
-                  <>
-                    <Divider />
-                    <ReviewRow label="Business Plan" value="Attached" />
-                  </>
-                )}
+                <Divider />
+                <ReviewRow label="Business Plan" value={form.businessPlan ? 'Attached' : '—'} />
+                <ReviewRow label="Budget Breakdown" value={form.budgetBreakdown ? 'Attached' : '—'} />
+                <ReviewRow label="Reg. Certificate" value={form.businessRegCertificate ? 'Attached' : '—'} />
                 <Alert severity="info" sx={{ mt: 1 }}>
                   Your project will be reviewed by our admin team before going live. This usually takes 1–2 business days.
                 </Alert>

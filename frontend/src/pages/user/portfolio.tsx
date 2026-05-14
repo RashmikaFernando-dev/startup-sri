@@ -25,20 +25,24 @@ import {
 } from 'chart.js'
 import { Doughnut, Bar } from 'react-chartjs-2'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
 const fmt = (n: number) => `LKR ${n.toLocaleString()}`
 
 const BADGE: Record<string, { bg: string; color: string }> = {
-  completed: { bg: '#d1fae5', color: '#065f46' },
-  pending:   { bg: '#fef3c7', color: '#92400e' },
-  cancelled: { bg: '#fee2e2', color: '#991b1b' },
-  refunded:  { bg: '#f3f4f6', color: '#374151' },
-  active:    { bg: '#d1fae5', color: '#065f46' },
-  approved:  { bg: '#dbeafe', color: '#1e40af' },
-  funded:    { bg: '#ede9fe', color: '#5b21b6' },
-  paid:      { bg: '#d1fae5', color: '#065f46' },
-  overdue:   { bg: '#fee2e2', color: '#991b1b' },
+  completed:        { bg: '#d1fae5', color: '#065f46' },
+  pending:          { bg: '#fef3c7', color: '#92400e' },
+  cancelled:        { bg: '#fee2e2', color: '#991b1b' },
+  refunded:         { bg: '#f3f4f6', color: '#374151' },
+  active:           { bg: '#d1fae5', color: '#065f46' },
+  approved:         { bg: '#dbeafe', color: '#1e40af' },
+  funded:           { bg: '#ede9fe', color: '#5b21b6' },
+  paid:             { bg: '#d1fae5', color: '#065f46' },
+  overdue:          { bg: '#fee2e2', color: '#991b1b' },
+  payment_claimed:  { bg: '#dbeafe', color: '#1e40af' },
 }
 
 function Badge({ label, status }: { label: string; status: string }) {
@@ -50,13 +54,14 @@ function Badge({ label, status }: { label: string; status: string }) {
   )
 }
 
-function InvestmentCard({ inv, user }: { inv: any; user: any }) {
+function InvestmentCard({ inv, user, onConfirm }: { inv: any; user: any; onConfirm: (invId: string, idx: number) => void }) {
   const [open, setOpen] = useState(false)
   const p = inv.project
   const progress = p ? Math.min(Math.round(((p.currentFunding || 0) / p.fundingGoal) * 100), 100) : 0
   const schedule: any[] = inv.repaymentSchedule ?? []
   const paidAmt = schedule.filter(r => r.status === 'paid').reduce((s: number, r: any) => s + r.amount, 0)
   const totalAmt = schedule.reduce((s: number, r: any) => s + r.amount, 0)
+  const pendingConfirmCount = schedule.filter(r => r.status === 'payment_claimed').length
 
   const generateReceipt = () => {
     const doc = new jsPDF()
@@ -235,21 +240,34 @@ function InvestmentCard({ inv, user }: { inv: any; user: any }) {
 
         {/* Microloan summary */}
         {inv.type === 'loan' && schedule.length > 0 && (
-          <Box sx={{ mt: 2, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-            <Box sx={{ display: 'flex', gap: 3 }}>
-              <Box>
-                <Typography sx={{ fontSize: 12, color: '#6b7280' }}>Repayments</Typography>
-                <Typography sx={{ fontWeight: 700, color: '#065f46' }}>{schedule.filter(r => r.status === 'paid').length}/{schedule.length} paid</Typography>
+          <>
+            {pendingConfirmCount > 0 && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 700, color: '#1e40af' }}>
+                  {pendingConfirmCount} repayment{pendingConfirmCount > 1 ? 's' : ''} awaiting your confirmation
+                </Typography>
+                <Button size="small" variant="outlined" onClick={() => setOpen(true)}
+                  sx={{ fontSize: 12, fontWeight: 700, textTransform: 'none', borderRadius: 2, borderColor: '#3b82f6', color: '#1d4ed8', '&:hover': { bgcolor: '#dbeafe', borderColor: '#1d4ed8' } }}>
+                  Review &amp; Confirm
+                </Button>
               </Box>
-              <Box>
-                <Typography sx={{ fontSize: 12, color: '#6b7280' }}>Received / Expected</Typography>
-                <Typography sx={{ fontWeight: 700, color: '#374151' }}>{fmt(paidAmt)} / {fmt(totalAmt)}</Typography>
+            )}
+            <Box sx={{ mt: 2, p: 2, bgcolor: '#f0fdf4', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 3 }}>
+                <Box>
+                  <Typography sx={{ fontSize: 12, color: '#6b7280' }}>Repayments</Typography>
+                  <Typography sx={{ fontWeight: 700, color: '#065f46' }}>{schedule.filter(r => r.status === 'paid').length}/{schedule.length} paid</Typography>
+                </Box>
+                <Box>
+                  <Typography sx={{ fontSize: 12, color: '#6b7280' }}>Received / Expected</Typography>
+                  <Typography sx={{ fontWeight: 700, color: '#374151' }}>{fmt(paidAmt)} / {fmt(totalAmt)}</Typography>
+                </Box>
               </Box>
+              <IconButton size="small" onClick={() => setOpen(v => !v)} sx={{ color: '#6b7280', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                <ExpandMoreIcon />
+              </IconButton>
             </Box>
-            <IconButton size="small" onClick={() => setOpen(v => !v)} sx={{ color: '#6b7280', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
-              <ExpandMoreIcon />
-            </IconButton>
-          </Box>
+          </>
         )}
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
@@ -286,7 +304,7 @@ function InvestmentCard({ inv, user }: { inv: any; user: any }) {
             <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
               <Box component="thead">
                 <Box component="tr" sx={{ bgcolor: '#f9fafb' }}>
-                  {['#', 'Due Date', 'Amount', 'Status'].map(h => (
+                  {['#', 'Due Date', 'Amount', 'Status', ''].map(h => (
                     <Box component="th" key={h} sx={{ px: 2, py: 1.2, textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</Box>
                   ))}
                 </Box>
@@ -297,9 +315,40 @@ function InvestmentCard({ inv, user }: { inv: any; user: any }) {
                     <Box component="td" sx={{ px: 2, py: 1.5, fontSize: 13, color: '#6b7280' }}>{i + 1}</Box>
                     <Box component="td" sx={{ px: 2, py: 1.5, fontSize: 13, color: '#374151' }}>
                       {new Date(r.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {r.claimedDate && r.status === 'payment_claimed' && (
+                        <Typography sx={{ fontSize: 10, color: '#6b7280' }}>
+                          Claimed {new Date(r.claimedDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </Typography>
+                      )}
+                      {r.paidDate && (
+                        <Typography sx={{ fontSize: 10, color: '#6b7280' }}>
+                          Confirmed {new Date(r.paidDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </Typography>
+                      )}
                     </Box>
                     <Box component="td" sx={{ px: 2, py: 1.5, fontSize: 13, fontWeight: 700, color: '#0a1940' }}>{fmt(r.amount)}</Box>
-                    <Box component="td" sx={{ px: 2, py: 1.5 }}><Badge label={r.status} status={r.status} /></Box>
+                    <Box component="td" sx={{ px: 2, py: 1.5 }}>
+                      <Badge
+                        label={r.status === 'payment_claimed' ? 'Claimed' : r.status}
+                        status={r.status}
+                      />
+                    </Box>
+                    <Box component="td" sx={{ px: 2, py: 1.5 }}>
+                      {r.status === 'payment_claimed' && (
+                        <Button
+                          size="small"
+                          variant="contained"
+                          onClick={() => onConfirm(inv._id, i)}
+                          sx={{
+                            fontSize: 11, fontWeight: 700, textTransform: 'none', borderRadius: 2,
+                            bgcolor: '#065f46', whiteSpace: 'nowrap',
+                            '&:hover': { bgcolor: '#047857' },
+                          }}
+                        >
+                          Confirm Received
+                        </Button>
+                      )}
+                    </Box>
                   </Box>
                 ))}
               </Box>
@@ -336,7 +385,7 @@ export default function PortfolioDashboard() {
     setLoading(true)
     try {
       const authToken = token || localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/investments/my', { headers: { Authorization: `Bearer ${authToken}` } })
+      const res = await fetch(`${API_BASE}/investments/my`, { headers: { Authorization: `Bearer ${authToken}` } })
       const data = await res.json()
       if (data.success) setInvestments(data.data)
       else setToast({ open: true, msg: 'Failed to load investments.', type: 'error' })
@@ -352,6 +401,22 @@ export default function PortfolioDashboard() {
     localStorage.removeItem('user')
     dispatch(logout())
     router.push('/')
+  }
+
+  const confirmRepayment = async (invId: string, idx: number) => {
+    try {
+      const authToken = token || localStorage.getItem('token')
+      const res = await fetch(`${API_BASE}/investments/${invId}/repayment/${idx}/confirm`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Failed to confirm')
+      setToast({ open: true, msg: 'Repayment confirmed. Instalment marked as paid.', type: 'success' })
+      fetchInvestments()
+    } catch (e: any) {
+      setToast({ open: true, msg: e.message || 'Confirmation failed.', type: 'error' })
+    }
   }
 
   const totalInvested  = investments.reduce((s, i) => s + i.amount, 0)
@@ -371,7 +436,7 @@ export default function PortfolioDashboard() {
       <Box sx={{ minHeight: '100vh', bgcolor: '#f7f8fa', display: 'flex', flexDirection: 'column' }}>
         <UserNavbar user={user} profileImage={profileImage} onLogout={handleLogout} />
 
-        <Box sx={{ flex: 1, maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, display: 'flex', gap: 3 }}>
+        <Box sx={{ flex: 1, maxWidth: 1100, mx: 'auto', width: '100%', px: { xs: 2, md: 4 }, py: 4, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
           <InvestorSidebar active="portfolio" />
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -473,7 +538,7 @@ export default function PortfolioDashboard() {
             </Box>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-              {investments.map(inv => <InvestmentCard key={inv._id} inv={inv} user={user} />)}
+              {investments.map(inv => <InvestmentCard key={inv._id} inv={inv} user={user} onConfirm={confirmRepayment} />)}
             </Box>
           )}
           </Box>

@@ -7,13 +7,15 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import CancelIcon from '@mui/icons-material/Cancel'
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch'
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty'
-import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt'
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet'
 import PeopleIcon from '@mui/icons-material/People'
 import AdminNavbar from '@/components/admin/AdminNavbar'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { MonthlyInvestmentChart, CategoryBreakdownChart, ProjectStatusChart, FundingTypeChart } from '@/components/admin/ProjectFundingChart'
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
 
 const CONTENT_LEFT = 240
 
@@ -42,7 +44,7 @@ export default function AdminDashboard() {
 
   const fetchAnalytics = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/stats/admin', { headers: { Authorization: `Bearer ${token()}` } })
+      const res = await fetch(`${API_BASE}/stats/admin`, { headers: { Authorization: `Bearer ${token()}` } })
       const data = await res.json()
       if (data.success) setAnalytics(data.data)
     } catch {}
@@ -52,7 +54,7 @@ export default function AdminDashboard() {
 
   const fetchProjects = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/projects', { headers: { Authorization: `Bearer ${token()}` } })
+      const res = await fetch(`${API_BASE}/admin/projects`, { headers: { Authorization: `Bearer ${token()}` } })
       const data = await res.json()
       if (data.success) setProjects(data.data)
     } catch {}
@@ -60,7 +62,7 @@ export default function AdminDashboard() {
 
   const updateProjectStatus = async (id: string, status: Project['status']) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/projects/${id}/status`, {
+      const res = await fetch(`${API_BASE}/admin/projects/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
         body: JSON.stringify({ status }),

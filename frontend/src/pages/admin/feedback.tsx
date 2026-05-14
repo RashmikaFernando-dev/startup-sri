@@ -20,6 +20,9 @@ import RateReviewIcon from '@mui/icons-material/RateReview'
 import AdminNavbar from '@/components/admin/AdminNavbar'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
 const CONTENT_LEFT = 240
 
 const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -66,7 +69,7 @@ export default function AdminFeedback() {
   const fetchFeedback = async () => {
     setLoading(true)
     try {
-      const res = await fetch('http://localhost:5000/api/feedback', {
+      const res = await fetch(`${API_BASE}/feedback`, {
         headers: { Authorization: `Bearer ${token()}` },
       })
       const data = await res.json()
@@ -81,7 +84,7 @@ export default function AdminFeedback() {
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
-      const res = await fetch(`http://localhost:5000/api/feedback/${deleteTarget._id}`, {
+      const res = await fetch(`${API_BASE}/feedback/${deleteTarget._id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token()}` },
       })

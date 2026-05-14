@@ -7,6 +7,7 @@ const { sendProjectApprovalEmail, sendProjectRejectionEmail } = require('../util
 const computeCreditScore = require('../utils/creditScore')
 const Notification = require('../models/Notification')
 const notifyAdmins = require('../utils/notifyAdmins')
+const createAuditLog = require('../utils/auditLog')
 
 // @desc    Get all projects
 // @route   GET /api/projects
@@ -179,6 +180,19 @@ const deleteProject = async (req, res, next) => {
 
     await Comment.deleteMany({ project: project._id })
     await project.deleteOne()
+
+    if (req.user.role === 'admin') {
+      await createAuditLog({
+        adminId: req.user.id,
+        action: 'PROJECT_DELETED',
+        targetType: 'Project',
+        targetId: project._id,
+        targetLabel: project.title,
+        details: { previousStatus: project.status },
+        req,
+      })
+    }
+
     res.status(200).json({ success: true, data: {} })
   } catch (error) {
     next(error)
@@ -341,7 +355,8 @@ const updateProjectStatus = async (req, res, next) => {
       const seq = String(count + 1).padStart(5, '0')
       project.proposalId = `PROP-${year}-${seq}`
 
-      const verifyUrl = `http://localhost:3000/verify/${project.proposalId}`
+      const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000'
+      const verifyUrl = `${baseUrl}/verify/${project.proposalId}`
       project.qrCode = await QRCode.toDataURL(verifyUrl, { width: 300, margin: 2 })
     }
 
@@ -371,6 +386,27 @@ const updateProjectStatus = async (req, res, next) => {
         type: 'warning',
       }).catch(() => {})
     }
+
+    // Audit log
+    const actionMap = {
+      approved: 'PROJECT_APPROVED',
+      rejected: 'PROJECT_REJECTED',
+      active: 'PROJECT_STATUS_CHANGED',
+      completed: 'PROJECT_STATUS_CHANGED',
+    }
+    await createAuditLog({
+      adminId: req.user.id,
+      action: actionMap[status] || 'PROJECT_STATUS_CHANGED',
+      targetType: 'Project',
+      targetId: project._id,
+      targetLabel: project.title,
+      details: {
+        newStatus: status,
+        ...(rejectionReason && { rejectionReason }),
+        entrepreneurEmail: project.entrepreneur.email,
+      },
+      req,
+    })
 
     res.status(200).json({ success: true, data: project })
   } catch (error) {

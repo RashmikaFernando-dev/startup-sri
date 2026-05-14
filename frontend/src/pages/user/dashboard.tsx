@@ -47,6 +47,9 @@ import {
 } from 'chart.js'
 import { Bar, Doughnut } from 'react-chartjs-2'
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
+
+
 ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Tooltip, Legend)
 
 const STATUS_COLOR: Record<string, 'default' | 'warning' | 'success' | 'error' | 'info' | 'primary'> = {
@@ -102,7 +105,7 @@ export default function Dashboard() {
     dispatch(fetchProjectsStart())
     try {
       const authToken = token || localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/projects', {
+      const res = await fetch(`${API_BASE}/projects`, {
         headers: { Authorization: `Bearer ${authToken}` },
       })
       const data = await res.json()
@@ -124,7 +127,7 @@ export default function Dashboard() {
     setRepaymentsLoading(true)
     try {
       const authToken = token || localStorage.getItem('token')
-      const res = await fetch('http://localhost:5000/api/investments/entrepreneur', {
+      const res = await fetch(`${API_BASE}/investments/entrepreneur`, {
         headers: { Authorization: `Bearer ${authToken}` },
       })
       const data = await res.json()
@@ -136,7 +139,7 @@ export default function Dashboard() {
   const markPaid = async (investmentId: string, index: number) => {
     try {
       const authToken = token || localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/investments/${investmentId}/repayment/${index}`, {
+      const res = await fetch(`${API_BASE}/investments/${investmentId}/repayment/${index}`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${authToken}` },
       })
@@ -154,7 +157,7 @@ export default function Dashboard() {
     if (!deleteId) return
     try {
       const authToken = token || localStorage.getItem('token')
-      const res = await fetch(`http://localhost:5000/api/projects/${deleteId}`, {
+      const res = await fetch(`${API_BASE}/projects/${deleteId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${authToken}` },
       })

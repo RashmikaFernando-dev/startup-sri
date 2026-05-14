@@ -6,6 +6,7 @@ const { protect, authorize } = require('../middleware/auth')
 const { sendKycApprovedEmail, sendKycRejectedEmail } = require('../utils/emailService')
 const Notification = require('../models/Notification')
 const notifyAdmins = require('../utils/notifyAdmins')
+const createAuditLog = require('../utils/auditLog')
 
 const userOnly = [protect, authorize('entrepreneur', 'investor')]
 const admin = [protect, authorize('admin')]
@@ -149,6 +150,18 @@ router.put('/admin/:id/review', admin, async (req, res) => {
         }).catch(() => {})
       }
     }
+
+    // Audit log
+    const userName = user ? `${user.firstName || ''} ${user.lastName || ''} (${user.email})`.trim() : kyc.user.toString()
+    await createAuditLog({
+      adminId: req.user.id,
+      action: status === 'approved' ? 'KYC_APPROVED' : 'KYC_REJECTED',
+      targetType: 'KYC',
+      targetId: kyc._id,
+      targetLabel: userName,
+      details: status === 'rejected' ? { rejectionReason } : {},
+      req,
+    })
 
     res.json({ success: true, data: kyc })
   } catch (err) {

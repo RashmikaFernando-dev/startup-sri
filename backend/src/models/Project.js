@@ -18,6 +18,30 @@ const projectSchema = new mongoose.Schema(
       required: [true, 'Project description is required'],
       maxlength: [2000, 'Description cannot exceed 2000 characters'],
     },
+    longDescription: {
+      type: String,
+      maxlength: [5000, 'Long description cannot exceed 5000 characters'],
+    },
+    businessName: {
+      type: String,
+      trim: true,
+    },
+    businessRegNumber: {
+      type: String,
+      trim: true,
+    },
+    businessType: {
+      type: String,
+      enum: ['Startup', 'SME', 'Idea Stage'],
+    },
+    proposalId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    qrCode: {
+      type: String,
+    },
     category: {
       type: String,
       required: [true, 'Category is required'],
@@ -66,6 +90,8 @@ const projectSchema = new mongoose.Schema(
       businessPlan: String,
       financialProjections: String,
       productDemo: String,
+      budgetBreakdown: String,
+      businessRegCertificate: String,
     },
     milestones: [
       {
