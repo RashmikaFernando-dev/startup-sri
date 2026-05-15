@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
-import { Box, Typography, Avatar } from '@mui/material'
+import { Box, Typography, Avatar, Button, Snackbar, Alert } from '@mui/material'
+import BlockIcon from '@mui/icons-material/Block'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import AdminNavbar from '@/components/admin/AdminNavbar'
 import AdminSidebar from '@/components/admin/AdminSidebar'
 
@@ -32,6 +34,8 @@ export default function AdminUsers() {
   const [admin, setAdmin] = useState<any>(null)
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ open: boolean; msg: string; type: 'success' | 'error' }>({ open: false, msg: '', type: 'success' })
 
   useEffect(() => {
     const stored = localStorage.getItem('adminUser')
@@ -56,6 +60,29 @@ export default function AdminUsers() {
       const data = await res.json()
       if (data.success) setUsers(data.data)
     } catch {} finally { setLoading(false) }
+  }
+
+  const handleToggleStatus = async (u: User) => {
+    const newStatus = !u.isActive
+    setActionLoading(u._id)
+    try {
+      const res = await fetch(`${API_BASE}/admin/users/${u._id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ isActive: newStatus }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setUsers(prev => prev.map(x => x._id === u._id ? { ...x, isActive: newStatus } : x))
+        setToast({ open: true, msg: `${u.firstName} ${u.lastName} has been ${newStatus ? 'reactivated' : 'suspended'}.`, type: 'success' })
+      } else {
+        setToast({ open: true, msg: data.message || 'Action failed.', type: 'error' })
+      }
+    } catch {
+      setToast({ open: true, msg: 'Network error. Please try again.', type: 'error' })
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   const handleLogout = () => {
@@ -104,7 +131,7 @@ export default function AdminUsers() {
               <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse' }}>
                 <Box component="thead">
                   <Box component="tr" sx={{ bgcolor: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                    {['User', 'Email', 'Role', 'Status', 'Verified', 'Joined'].map(h => (
+                    {['User', 'Email', 'Role', 'Status', 'Verified', 'Joined', 'Actions'].map(h => (
                       <Box component="th" key={h} sx={{ px: 3, py: 1.8, textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         {h}
                       </Box>
@@ -115,14 +142,14 @@ export default function AdminUsers() {
                 <Box component="tbody">
                   {loading ? (
                     <Box component="tr">
-                      <Box component="td" colSpan={6} sx={{ px: 3, py: 6, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
+                      <Box component="td" colSpan={7} sx={{ px: 3, py: 6, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
                         Loading users…
                       </Box>
                     </Box>
                   ) : users.length === 0 ? (
                     <Box component="tr">
-                      <Box component="td" colSpan={6} sx={{ px: 3, py: 6, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
-                        No users found. (Requires GET /api/admin/users endpoint)
+                      <Box component="td" colSpan={7} sx={{ px: 3, py: 6, textAlign: 'center', color: '#9ca3af', fontSize: 14 }}>
+                        No users found.
                       </Box>
                     </Box>
                   ) : users.map((u, idx, arr) => {
@@ -162,6 +189,29 @@ export default function AdminUsers() {
                         <Box component="td" sx={{ px: 3, py: 2.5, fontSize: 13, color: '#9ca3af' }}>
                           {new Date(u.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </Box>
+                        <Box component="td" sx={{ px: 3, py: 2.5 }}>
+                          {u.role !== 'admin' && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              disabled={actionLoading === u._id}
+                              startIcon={u.isActive ? <BlockIcon sx={{ fontSize: 15 }} /> : <CheckCircleOutlineIcon sx={{ fontSize: 15 }} />}
+                              onClick={() => handleToggleStatus(u)}
+                              sx={{
+                                textTransform: 'none', fontWeight: 700, fontSize: 12, borderRadius: 1.5,
+                                borderColor: u.isActive ? '#ef4444' : '#10b981',
+                                color: u.isActive ? '#ef4444' : '#10b981',
+                                '&:hover': {
+                                  bgcolor: u.isActive ? '#fef2f2' : '#ecfdf5',
+                                  borderColor: u.isActive ? '#dc2626' : '#059669',
+                                },
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {actionLoading === u._id ? 'Saving…' : u.isActive ? 'Suspend' : 'Reactivate'}
+                            </Button>
+                          )}
+                        </Box>
                       </Box>
                     )
                   })}
@@ -177,6 +227,12 @@ export default function AdminUsers() {
           </Box>
         </Box>
       </Box>
+
+      <Snackbar open={toast.open} autoHideDuration={4000} onClose={() => setToast(t => ({ ...t, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity={toast.type} onClose={() => setToast(t => ({ ...t, open: false }))} sx={{ fontWeight: 600 }}>
+          {toast.msg}
+        </Alert>
+      </Snackbar>
     </>
   )
 }
