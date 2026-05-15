@@ -25,13 +25,13 @@ export default function Footer() {
             Connecting tech entrepreneurs with investors to build Sri Lanka's startup ecosystem.
           </Typography>
           <Stack direction="row" spacing={1}>
-            <IconButton component="a" href="https://linkedin.com/company/startupsri" target="_blank" sx={{ color: 'rgba(255,255,255,0.7)', bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { color: '#0077b5', bgcolor: 'rgba(255,255,255,0.1)' } }}>
+            <IconButton component="a" href="https://www.linkedin.com/company/117594214" target="_blank" sx={{ color: 'rgba(255,255,255,0.7)', bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { color: '#0077b5', bgcolor: 'rgba(255,255,255,0.1)' } }}>
               <LinkedInIcon fontSize="small" />
             </IconButton>
-            <IconButton component="a" href="https://facebook.com/startupsri" target="_blank" sx={{ color: 'rgba(255,255,255,0.7)', bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { color: '#1877f2', bgcolor: 'rgba(255,255,255,0.1)' } }}>
+            <IconButton component="a" href="https://www.facebook.com/share/18rPPViZH6/?mibextid=wwXIfr" target="_blank" sx={{ color: 'rgba(255,255,255,0.7)', bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { color: '#1877f2', bgcolor: 'rgba(255,255,255,0.1)' } }}>
               <FacebookIcon fontSize="small" />
             </IconButton>
-            <IconButton component="a" href="https://instagram.com/startupsri" target="_blank" sx={{ color: 'rgba(255,255,255,0.7)', bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { color: '#e4405f', bgcolor: 'rgba(255,255,255,0.1)' } }}>
+            <IconButton component="a" href="https://www.instagram.com/stackbeam?igsh=aDI1b3o5ZTY4dW44&utm_source=qr" target="_blank" sx={{ color: 'rgba(255,255,255,0.7)', bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { color: '#e4405f', bgcolor: 'rgba(255,255,255,0.1)' } }}>
               <InstagramIcon fontSize="small" />
             </IconButton>
             <IconButton component="a" href="https://x.com/startupsri" target="_blank" sx={{ color: 'rgba(255,255,255,0.7)', bgcolor: 'rgba(255,255,255,0.05)', '&:hover': { color: '#000000', bgcolor: 'rgba(255,255,255,0.1)' } }}>
