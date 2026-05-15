@@ -1,6 +1,6 @@
 import Head from 'next/head'
 import { useEffect, useState } from 'react'
-import { Box, Container, Typography, Button, Grid, Card, CardContent, Avatar, Chip, Accordion, AccordionSummary, AccordionDetails, LinearProgress, TextField, Divider, Stack, IconButton } from '@mui/material'
+import { Box, Container, Typography, Button, Grid, Card, CardContent, Avatar, Chip, Accordion, AccordionSummary, AccordionDetails, LinearProgress, TextField, Divider, Stack, IconButton, Snackbar, Alert, CircularProgress } from '@mui/material'
 import { useRouter } from 'next/router'
 import Layout from '@/components/layout/Layout'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle'
@@ -135,6 +135,36 @@ export default function Home() {
   const [feedbackLoading, setFeedbackLoading] = useState(true)
   const [feedbackError, setFeedbackError] = useState('')
   const [platformStats, setPlatformStats] = useState(fallbackStats)
+
+  const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' })
+  const [contactLoading, setContactLoading] = useState(false)
+  const [contactSnackbar, setContactSnackbar] = useState<{ open: boolean; severity: 'success' | 'error'; message: string }>({ open: false, severity: 'success', message: '' })
+
+  const handleContactChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setContactForm(prev => ({ ...prev, [field]: e.target.value }))
+  }
+
+  const handleContactSubmit = async () => {
+    if (!contactForm.name || !contactForm.email || !contactForm.subject || !contactForm.message) {
+      setContactSnackbar({ open: true, severity: 'error', message: 'Please fill in all fields before sending.' })
+      return
+    }
+    setContactLoading(true)
+    try {
+      await api.post('/feedback/contact', {
+        name: contactForm.name,
+        email: contactForm.email,
+        subject: contactForm.subject,
+        message: contactForm.message,
+      })
+      setContactForm({ name: '', email: '', subject: '', message: '' })
+      setContactSnackbar({ open: true, severity: 'success', message: 'Message sent successfully! We will get back to you soon.' })
+    } catch {
+      setContactSnackbar({ open: true, severity: 'error', message: 'Failed to send message. Please try again.' })
+    } finally {
+      setContactLoading(false)
+    }
+  }
 
   useEffect(() => {
     const loadStats = async () => {
@@ -840,20 +870,22 @@ export default function Home() {
                 <CardContent sx={{ p: 3 }}>
                   <Grid container spacing={2.5}>
                     <Grid item xs={12} sm={6}>
-                      <TextField fullWidth label="Your Name" variant="outlined" />
+                      <TextField fullWidth label="Your Name" variant="outlined" value={contactForm.name} onChange={handleContactChange('name')} />
                     </Grid>
                     <Grid item xs={12} sm={6}>
-                      <TextField fullWidth label="Email Address" variant="outlined" type="email" />
+                      <TextField fullWidth label="Email Address" variant="outlined" type="email" value={contactForm.email} onChange={handleContactChange('email')} />
                     </Grid>
                     <Grid item xs={12}>
-                      <TextField fullWidth label="Subject" variant="outlined" />
+                      <TextField fullWidth label="Subject" variant="outlined" value={contactForm.subject} onChange={handleContactChange('subject')} />
                     </Grid>
                     <Grid item xs={12}>
-                      <TextField fullWidth label="Message" variant="outlined" multiline rows={4} />
+                      <TextField fullWidth label="Message" variant="outlined" multiline rows={4} value={contactForm.message} onChange={handleContactChange('message')} />
                     </Grid>
                     <Grid item xs={12}>
                       <Button
                         variant="contained" size="large" fullWidth
+                        onClick={handleContactSubmit}
+                        disabled={contactLoading}
                         sx={{
                           py: 1.5,
                           fontWeight: 700,
@@ -864,7 +896,7 @@ export default function Home() {
                           '&:hover': { bgcolor: '#000000' },
                         }}
                       >
-                        Send Message
+                        {contactLoading ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : 'Send Message'}
                       </Button>
                     </Grid>
                   </Grid>
@@ -875,6 +907,16 @@ export default function Home() {
         </Container>
       </Box>
 
+      <Snackbar
+        open={contactSnackbar.open}
+        autoHideDuration={5000}
+        onClose={() => setContactSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={contactSnackbar.severity} onClose={() => setContactSnackbar(prev => ({ ...prev, open: false }))} sx={{ width: '100%' }}>
+          {contactSnackbar.message}
+        </Alert>
+      </Snackbar>
     </Layout>
   )
 }

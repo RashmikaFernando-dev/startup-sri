@@ -1,8 +1,33 @@
 const express = require('express')
 const { protect, authorize } = require('../middleware/auth')
 const Feedback = require('../models/Feedback')
+const ContactMessage = require('../models/ContactMessage')
 
 const router = express.Router()
+
+// POST /api/feedback/contact — public contact form submission (no auth required)
+router.post('/contact', async (req, res, next) => {
+  try {
+    const { name, email, subject, message } = req.body
+    if (!name || !email || !subject || !message) {
+      return res.status(400).json({ success: false, message: 'All fields are required' })
+    }
+    const contact = await ContactMessage.create({ name, email, subject, message })
+    res.status(201).json({ success: true, data: contact })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// GET /api/feedback/contact — view all contact messages (admin only)
+router.get('/contact', protect, authorize('admin'), async (req, res, next) => {
+  try {
+    const messages = await ContactMessage.find().sort({ createdAt: -1 })
+    res.json({ success: true, data: messages })
+  } catch (err) {
+    next(err)
+  }
+})
 
 // POST /api/feedback — submit platform feedback (auth required)
 router.post('/', protect, async (req, res, next) => {

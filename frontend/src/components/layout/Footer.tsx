@@ -4,6 +4,7 @@ import TwitterIcon from '@mui/icons-material/Twitter'
 import FacebookIcon from '@mui/icons-material/Facebook'
 import InstagramIcon from '@mui/icons-material/Instagram'
 import EmailIcon from '@mui/icons-material/Email'
+import Link from 'next/link'
 
 export default function Footer() {
   return (
@@ -42,9 +43,32 @@ export default function Footer() {
           </Stack>
         </Box>
         {[
-          { title: 'Platform', links: ['How It Works', 'Browse Projects', 'Apply to Raise', 'Pricing'] },
-          { title: 'Company', links: ['About Us', 'Careers', 'Blog', 'Press'] },
-          { title: 'Resources', links: ['Help Center', 'Investor Guide', 'Startup Guide', 'Community'] },
+          {
+            title: 'Platform',
+            links: [
+              { label: 'How It Works', href: '/#how-it-works' },
+              { label: 'Browse Projects', href: '/user/projects' },
+              { label: 'Apply to Raise', href: '/user/submit-project' },
+              { label: 'Contact Us', href: '/#contact' },
+            ],
+          },
+          {
+            title: 'Company',
+            links: [
+              { label: 'About Us', href: '/#about' },
+              { label: 'Register', href: '/auth/register' },
+              { label: 'Login', href: '/auth/login' },
+            ],
+          },
+          {
+            title: 'Resources',
+            links: [
+              { label: 'KYC Verification', href: '/user/verifications' },
+              { label: 'Investor Portfolio', href: '/user/portfolio' },
+              { label: 'Startup Guide', href: '/user/submit-project' },
+              { label: 'Dashboard', href: '/user/dashboard' },
+            ],
+          },
         ].map(col => (
           <Box key={col.title}>
             <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1, color: 'rgba(255,255,255,0.9)' }}>
@@ -52,9 +76,11 @@ export default function Footer() {
             </Typography>
             <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
               {col.links.map(link => (
-                <Typography key={link} variant="body2" sx={{ cursor: 'pointer', color: 'rgba(255,255,255,0.65)', '&:hover': { color: '#ffffff' } }}>
-                  {link}
-                </Typography>
+                <Link key={link.label} href={link.href} style={{ textDecoration: 'none' }}>
+                  <Typography variant="body2" sx={{ cursor: 'pointer', color: 'rgba(255,255,255,0.65)', '&:hover': { color: '#ffffff' } }}>
+                    {link.label}
+                  </Typography>
+                </Link>
               ))}
             </Box>
           </Box>
