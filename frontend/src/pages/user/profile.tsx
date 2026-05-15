@@ -230,16 +230,24 @@ export default function ProfilePage() {
                     <Typography variant="caption" sx={{ fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>Account Role</Typography>
                     <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
                       <Chip label={user?.role} size="small" sx={{ bgcolor: '#dbeafe', color: '#1d4ed8', fontWeight: 700, textTransform: 'capitalize' }} />
-                      {user?.role === 'entrepreneur' && (
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<VerifiedUserIcon fontSize="small" />}
-                          onClick={() => router.push('/user/verifications')}
-                          sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.75rem' }}
-                        >
-                          Verify
-                        </Button>
+                      {(user?.role === 'entrepreneur' || user?.role === 'investor') && (
+                        user?.isVerified
+                          ? <Chip
+                              label="KYC Verified"
+                              size="small"
+                              icon={<VerifiedUserIcon sx={{ fontSize: '14px !important', color: '#059669 !important' }} />}
+                              onClick={() => router.push('/user/verifications')}
+                              sx={{ bgcolor: '#d1fae5', color: '#059669', fontWeight: 700, fontSize: '0.72rem', cursor: 'pointer', '&:hover': { bgcolor: '#a7f3d0' } }}
+                            />
+                          : <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<VerifiedUserIcon fontSize="small" />}
+                              onClick={() => router.push('/user/verifications')}
+                              sx={{ borderRadius: 2, textTransform: 'none', fontSize: '0.75rem', borderColor: '#f59e0b', color: '#d97706', '&:hover': { bgcolor: '#fffbeb', borderColor: '#d97706' } }}
+                            >
+                              Verify Now
+                            </Button>
                       )}
                     </Box>
                   </Box>
@@ -375,7 +383,10 @@ export default function ProfilePage() {
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>Identity Verified</Typography>
                       <Typography variant="caption" color="text.secondary">KYC verification status</Typography>
                     </Box>
-                    <Chip label="Verified" color="success" size="small" sx={{ fontWeight: 700 }} />
+                    {user?.isVerified
+                      ? <Chip label="Verified" color="success" size="small" sx={{ fontWeight: 700 }} />
+                      : <Chip label="Not Verified" size="small" sx={{ fontWeight: 700, bgcolor: '#fef3c7', color: '#d97706' }} />
+                    }
                   </Box>
                 </Box>
 

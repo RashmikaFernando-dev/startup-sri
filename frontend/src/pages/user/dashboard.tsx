@@ -21,6 +21,7 @@ import {
   DialogActions,
   Alert,
   Snackbar,
+  TextField,
 } from '@mui/material'
 import Footer from '../../components/layout/Footer'
 import EditIcon from '@mui/icons-material/Edit'
@@ -76,6 +77,37 @@ export default function Dashboard() {
 
   // Delete confirm dialog
   const [deleteId, setDeleteId] = useState<string | null>(null)
+
+  // Edit dialog
+  const [editProject, setEditProject] = useState<any | null>(null)
+  const [editForm, setEditForm] = useState({ title: '', description: '', longDescription: '' })
+  const [editLoading, setEditLoading] = useState(false)
+
+  const openEdit = (project: any) => {
+    setEditProject(project)
+    setEditForm({ title: project.title || '', description: project.description || '', longDescription: project.longDescription || '' })
+  }
+
+  const handleEditSave = async () => {
+    if (!editProject) return
+    setEditLoading(true)
+    try {
+      const res = await fetch(`${API_BASE}/projects/${editProject._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(editForm),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.message || 'Update failed')
+      dispatch(fetchProjectsSuccess(projects.map((p: any) => p._id === editProject._id ? { ...p, ...editForm } : p)))
+      setToast({ open: true, msg: 'Project updated successfully.', type: 'success' })
+      setEditProject(null)
+    } catch (err: any) {
+      setToast({ open: true, msg: err.message || 'Failed to update project.', type: 'error' })
+    } finally {
+      setEditLoading(false)
+    }
+  }
 
   // Repayments tab
   const [repayments, setRepayments] = useState<any[]>([])
@@ -451,6 +483,7 @@ export default function Dashboard() {
                               size="small"
                               variant="outlined"
                               startIcon={<EditIcon />}
+                              onClick={() => openEdit(project)}
                               sx={{
                                 borderRadius: 2,
                                 textTransform: 'none',
@@ -630,6 +663,50 @@ export default function Dashboard() {
             }}
           >
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Edit Dialog ── */}
+      <Dialog open={!!editProject} onClose={() => setEditProject(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, p: 1 } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: '#0a1940' }}>Edit Project</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 2 }}>
+          <TextField
+            label="Project Title"
+            fullWidth
+            value={editForm.title}
+            onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+            size="small"
+          />
+          <TextField
+            label="Short Description"
+            fullWidth
+            multiline
+            rows={2}
+            value={editForm.description}
+            onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+            size="small"
+            helperText="Used for credit scoring — keep above 200 characters"
+          />
+          <TextField
+            label="Full Description"
+            fullWidth
+            multiline
+            rows={4}
+            value={editForm.longDescription}
+            onChange={e => setEditForm(f => ({ ...f, longDescription: e.target.value }))}
+            size="small"
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setEditProject(null)} sx={{ textTransform: 'none', color: '#6b7280' }}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleEditSave}
+            disabled={editLoading}
+            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700, bgcolor: '#111111', '&:hover': { bgcolor: '#000000' } }}
+          >
+            {editLoading ? 'Saving...' : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>

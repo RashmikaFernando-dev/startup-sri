@@ -174,7 +174,14 @@ export default function InvestorDashboard() {
   const handlePrint = (url: string) => {
     const w = window.open(url)
     if (w) {
-      setTimeout(() => w.print(), 1000)
+      w.onload = () => {
+        try {
+          w.focus()
+          w.print()
+        } catch {
+          // browser blocked cross-origin print — user can print manually from the opened tab
+        }
+      }
     }
   }
 
